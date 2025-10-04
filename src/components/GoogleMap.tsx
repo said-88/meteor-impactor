@@ -64,35 +64,31 @@ export function GoogleMap({ impactLocation, impactResults, onLocationChange }: G
   return (
     <div className="relative w-full h-full min-h-[400px]">
       <APIProvider apiKey={apiKey} libraries={['geometry']}>
-        <div className="relative w-full h-full">
-          <Map
-            center={impactLocation}
-            zoom={6}
-            minZoom={1}
-            maxZoom={20}
-            mapTypeControl={true}
-            streetViewControl={false}
-            fullscreenControl={true}
-            zoomControl={true}
-            scrollwheel={true}
-            gestureHandling={'auto'}
-            disableDoubleClickZoom={false}
-            onClick={handleMapClick}
-            style={{
-              width: '100%',
-              height: '100%'
-            }}
-          />
-
+        <Map
+          defaultCenter={impactLocation}
+          defaultZoom={6}
+          minZoom={2}
+          maxZoom={20}
+          mapTypeControl={true}
+          streetViewControl={false}
+          fullscreenControl={true}
+          zoomControl={true}
+          gestureHandling="greedy"
+          disableDoubleClickZoom={false}
+          clickableIcons={true}
+          onClick={handleMapClick}
+          style={{
+            width: '100%',
+            height: '100%'
+          }}
+        >
           {/* Marker */}
           <Marker
             position={impactLocation}
             draggable={true}
             onDragEnd={handleMarkerDragEnd}
           />
-
-
-        </div>
+        </Map>
       </APIProvider>
 
       {/* Legend */}
