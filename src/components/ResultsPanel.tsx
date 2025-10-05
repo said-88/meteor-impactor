@@ -1,71 +1,74 @@
-'use client';
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
-  Zap,
+  Activity,
+  AlertTriangle,
+  Info,
   Target,
   Thermometer,
-  Wind,
-  Activity,
   Users,
-  AlertTriangle,
-  Info
-} from 'lucide-react';
-import type { ImpactResults } from '@/types/asteroid';
+  Wind,
+  Zap,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { useMeteorStore } from "@/lib/store/meteorStore";
 import {
   formatDistance,
   formatEnergy,
-  formatMegatons,
-  formatTemperature,
   formatMagnitude,
+  formatMegatons,
   formatNumber,
+  formatTemperature,
+  getHistoricalComparison,
   getImpactSeverity,
-  getHistoricalComparison
-} from '@/lib/utils';
+} from "@/lib/utils";
 
-interface ResultsPanelProps {
-  results: ImpactResults;
-  showDetails?: boolean;
-  onHide?: () => void;
-}
+export function ResultsPanel() {
+  const { impactResults, toggleResultsPanel } = useMeteorStore();
 
-export function ResultsPanel({ results, showDetails = true, onHide }: ResultsPanelProps) {
-  const severity = getImpactSeverity(results.energy.megatonsTNT);
-  const historicalComparison = getHistoricalComparison(results.energy.megatonsTNT);
+  if (!impactResults) return null;
+
+  const severity = getImpactSeverity(impactResults.energy.megatonsTNT);
+  const historicalComparison = getHistoricalComparison(
+    impactResults.energy.megatonsTNT,
+  );
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            Impact Results
+    <div className="glass-panel h-full flex flex-col">
+      <div className="p-6 border-b border-white/10">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+            <Activity className="w-5 h-5 text-primary" />
+            IMPACT ANALYSIS
+          </h2>
+          <div className="flex items-center gap-2">
             <Badge
-              variant="outline"
-              style={{
-                backgroundColor: severity.color + '20',
-                borderColor: severity.color,
-                color: severity.color
-              }}
+              className={`${
+                severity.level === 'minimal' ? 'threat-low' :
+                severity.level === 'low' ? 'threat-low' :
+                severity.level === 'moderate' ? 'threat-medium' :
+                severity.level === 'high' ? 'threat-high' :
+                severity.level === 'catastrophic' ? 'threat-extreme' : 'threat-extreme'
+              } px-3 py-1`}
             >
-              {severity.level}
+              {severity.level.toUpperCase()}
             </Badge>
-          </span>
-          {onHide && (
             <button
-              onClick={onHide}
-              className="text-gray-400 hover:text-gray-600 p-1"
+              onClick={toggleResultsPanel}
+              className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-white/10 transition-colors"
               title="Hide Panel"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Energy Section */}
         <div className="space-y-3">
           <div className="flex items-center gap-2">
@@ -75,11 +78,15 @@ export function ResultsPanel({ results, showDetails = true, onHide }: ResultsPan
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="space-y-1">
               <p className="text-muted-foreground">Total Energy</p>
-              <p className="font-mono text-lg">{formatEnergy(results.energy.joules)}</p>
+              <p className="font-mono text-lg">
+                {formatEnergy(impactResults.energy.joules)}
+              </p>
             </div>
             <div className="space-y-1">
               <p className="text-muted-foreground">TNT Equivalent</p>
-              <p className="font-mono text-lg">{formatMegatons(results.energy.megatonsTNT)}</p>
+              <p className="font-mono text-lg">
+                {formatMegatons(impactResults.energy.megatonsTNT)}
+              </p>
             </div>
           </div>
         </div>
@@ -95,11 +102,15 @@ export function ResultsPanel({ results, showDetails = true, onHide }: ResultsPan
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="space-y-1">
               <p className="text-muted-foreground">Diameter</p>
-              <p className="font-mono text-lg">{formatDistance(results.crater.diameter)}</p>
+              <p className="font-mono text-lg">
+                {formatDistance(impactResults.crater.diameter)}
+              </p>
             </div>
             <div className="space-y-1">
               <p className="text-muted-foreground">Depth</p>
-              <p className="font-mono text-lg">{formatDistance(results.crater.depth)}</p>
+              <p className="font-mono text-lg">
+                {formatDistance(impactResults.crater.depth)}
+              </p>
             </div>
           </div>
         </div>
@@ -119,7 +130,9 @@ export function ResultsPanel({ results, showDetails = true, onHide }: ResultsPan
                 <div className="w-3 h-3 rounded-full bg-orange-500"></div>
                 <span className="text-muted-foreground">Fireball Radius</span>
               </div>
-              <span className="font-mono">{formatDistance(results.effects.fireball.radius * 1000)}</span>
+              <span className="font-mono">
+                {formatDistance(impactResults.effects.fireball.radius * 1000)}
+              </span>
             </div>
 
             <div className="flex items-center justify-between">
@@ -127,7 +140,9 @@ export function ResultsPanel({ results, showDetails = true, onHide }: ResultsPan
                 <Thermometer className="w-3 h-3 text-red-500" />
                 <span className="text-muted-foreground">Max Temperature</span>
               </div>
-              <span className="font-mono">{formatTemperature(results.effects.fireball.temperature)}</span>
+              <span className="font-mono">
+                {formatTemperature(impactResults.effects.fireball.temperature)}
+              </span>
             </div>
 
             <div className="flex items-center justify-between">
@@ -135,7 +150,11 @@ export function ResultsPanel({ results, showDetails = true, onHide }: ResultsPan
                 <Wind className="w-3 h-3 text-blue-500" />
                 <span className="text-muted-foreground">Airblast Radius</span>
               </div>
-              <span className="font-mono">{formatDistance(results.effects.airblast.overpressureRadius * 1000)}</span>
+              <span className="font-mono">
+                {formatDistance(
+                  impactResults.effects.airblast.overpressureRadius * 1000,
+                )}
+              </span>
             </div>
 
             <div className="flex items-center justify-between">
@@ -143,7 +162,9 @@ export function ResultsPanel({ results, showDetails = true, onHide }: ResultsPan
                 <Activity className="w-3 h-3 text-purple-500" />
                 <span className="text-muted-foreground">Seismic Magnitude</span>
               </div>
-              <span className="font-mono">{formatMagnitude(results.effects.seismic.magnitude)}</span>
+              <span className="font-mono">
+                {formatMagnitude(impactResults.effects.seismic.magnitude)}
+              </span>
             </div>
           </div>
         </div>
@@ -160,13 +181,13 @@ export function ResultsPanel({ results, showDetails = true, onHide }: ResultsPan
             <div className="space-y-1">
               <p className="text-muted-foreground">Estimated Casualties</p>
               <p className="font-mono text-lg text-red-600">
-                {formatNumber(results.casualties.estimated)}
+                {formatNumber(impactResults.casualties.estimated)}
               </p>
             </div>
             <div className="space-y-1">
               <p className="text-muted-foreground">Affected Population</p>
               <p className="font-mono text-lg text-orange-600">
-                {formatNumber(results.casualties.affectedPopulation)}
+                {formatNumber(impactResults.casualties.affectedPopulation)}
               </p>
             </div>
           </div>
@@ -183,22 +204,40 @@ export function ResultsPanel({ results, showDetails = true, onHide }: ResultsPan
           </p>
         </div>
 
-        {/* Detailed Effects (Collapsible) */}
-        {showDetails && (
-          <>
-            <Separator />
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm">Detailed Effects</h4>
-              <div className="text-xs space-y-1 text-muted-foreground">
-                <p>• Thermal radiation can cause severe burns up to {formatDistance(results.effects.thermal.radiationRadius * 1000)}</p>
-                <p>• Shockwave effects felt up to {formatDistance(results.effects.airblast.shockwaveRadius * 1000)}</p>
-                <p>• Seismic activity equivalent to magnitude {results.effects.seismic.magnitude} earthquake</p>
-                <p>• Crater formation would displace {formatNumber(results.crater.diameter * results.crater.depth * Math.PI / 6)} cubic meters of material</p>
-              </div>
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+        {/* Detailed Effects */}
+        <Separator />
+        <div className="space-y-2">
+          <h4 className="font-medium text-sm">Detailed Effects</h4>
+          <div className="text-xs space-y-1 text-muted-foreground">
+            <p>
+              • Thermal radiation can cause severe burns up to{" "}
+              {formatDistance(
+                impactResults.effects.thermal.radiationRadius * 1000,
+              )}
+            </p>
+            <p>
+              • Shockwave effects felt up to{" "}
+              {formatDistance(
+                impactResults.effects.airblast.shockwaveRadius * 1000,
+              )}
+            </p>
+            <p>
+              • Seismic activity equivalent to magnitude{" "}
+              {impactResults.effects.seismic.magnitude} earthquake
+            </p>
+            <p>
+              • Crater formation would displace{" "}
+              {formatNumber(
+                (impactResults.crater.diameter *
+                  impactResults.crater.depth *
+                  Math.PI) /
+                  6,
+              )}{" "}
+              cubic meters of material
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

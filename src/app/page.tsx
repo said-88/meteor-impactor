@@ -1,152 +1,145 @@
-'use client';
+"use client";
 
-import { useState, useMemo } from 'react';
-import { GoogleMap } from '@/components/GoogleMap';
-import { ControlPanel } from '@/components/ControlPanel';
-import { ResultsPanel } from '@/components/ResultsPanel';
-import { ImpactCalculator } from '@/lib/physics/impactCalculator';
-import type { MeteorParameters, ImpactLocation, ImpactResults } from '@/types/asteroid';
+import { ControlPanel } from "@/components/ControlPanel";
+import { GoogleMap } from "@/components/GoogleMap";
+import { ResultsPanel } from "@/components/ResultsPanel";
+import { useMeteorStore } from "@/lib/store/meteorStore";
+import { Settings, Menu, X, Activity } from "lucide-react";
+import { useState } from "react";
 
 export default function Home() {
-  // Default impact location (New York area for demonstration)
-  const [impactLocation, setImpactLocation] = useState<ImpactLocation>({
-    lat: 40.7128,
-    lng: -74.0060,
-  });
-
-  // Default meteor parameters
-  const [parameters, setParameters] = useState<MeteorParameters>(
-    ImpactCalculator.getDefaultParameters()
-  );
-
-  // Control panel for results visibility
-  const [showResults, setShowResults] = useState(true);
-
-  // Calculate impact results based on current parameters
-  const impactResults: ImpactResults | null = useMemo(() => {
-    if (!parameters) return null;
-    return ImpactCalculator.calculateImpact(parameters, 100); // Default population density
-  }, [parameters]);
-
-  const handleParametersChange = (newParameters: MeteorParameters) => {
-    setParameters(newParameters);
-  };
-
-  const handleLocationChange = (newLocation: ImpactLocation) => {
-    setImpactLocation(newLocation);
-  };
-
-  const handleRandomize = () => {
-    const randomParams: MeteorParameters = {
-      diameter: Math.random() * 990 + 10, // 10-1000m
-      velocity: Math.random() * 61 + 11, // 11-72 km/s
-      angle: Math.random() * 90, // 0-90 degrees
-      density: ImpactCalculator.getDensityForComposition(
-        ['rocky', 'iron', 'icy'][Math.floor(Math.random() * 3)]
-      ),
-      composition: ['rocky', 'iron', 'icy'][Math.floor(Math.random() * 3)] as any,
-    };
-    setParameters(randomParams);
-  };
+  // Use Zustand store for global state management
+  const { showResults, impactResults, toggleResultsPanel, isAnimating } = useMeteorStore();
+  const [showControls, setShowControls] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-6">
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Prevent text selection and context menu */}
+      <div className="select-none" onContextMenu={(e) => e.preventDefault()}>
+      {/* Strategic Header */}
+      <header className="strategic-header">
+        <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">
-                Meteor Impact Simulator
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                Explore the potential consequences of meteor impacts on Earth
-              </p>
+            <div className="flex items-center gap-4">
+              {/* Menu Toggle */}
+              <button
+                onClick={() => setShowControls(!showControls)}
+                className="control-button p-2 rounded-lg"
+                title="Toggle Control Panel"
+              >
+                {showControls ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+
+              {/* Title */}
+              <div>
+                <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                  <Activity className="w-6 h-6 text-primary" />
+                  METEOR IMPACT SIMULATOR
+                </h1>
+                <p className="text-muted-foreground text-sm">
+                  Strategic Impact Analysis • Real-time Physics Simulation
+                </p>
+              </div>
             </div>
-            <div className="text-sm text-muted-foreground">
-              <p>Based on real physics and scientific data</p>
-              <p>Inspired by NASA NEO and USGS datasets</p>
+
+            <div className="flex items-center gap-2">
+              {/* Status Indicator */}
+              {isAnimating && (
+                <div className="flex items-center gap-2 px-3 py-1 bg-primary/20 rounded-full">
+                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                  <span className="text-xs text-primary font-medium">CALCULATING</span>
+                </div>
+              )}
+
+              {/* Settings Toggle */}
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className="control-button p-2 rounded-lg"
+                title="Settings"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
-          {/* Control Panel */}
-          <div className="xl:col-span-1">
-            <ControlPanel
-              parameters={parameters}
-              onParametersChange={handleParametersChange}
-              onRandomize={handleRandomize}
-            />
-          </div>
+      {/* Main Strategic Interface */}
+      <main className="relative h-[calc(100vh-80px)]">
+        {/* Full-Screen Map */}
+        <div className="absolute inset-0">
+          <GoogleMap />
+        </div>
 
-          {/* Map View */}
-          <div className="xl:col-span-2">
-            <div className="bg-card rounded-lg border h-full overflow-hidden">
-              <div className="p-4 border-b">
-                <h2 className="text-xl font-semibold">Impact Visualization</h2>
-                <p className="text-sm text-muted-foreground">
-                  Click on the map to select impact location • Drag the marker to reposition
-                </p>
-              </div>
-              <div className="h-[calc(100%-80px)]">
-                <GoogleMap
-                  impactLocation={impactLocation}
-                  impactResults={impactResults}
-                  onLocationChange={handleLocationChange}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Results Panel - Desktop: Right side, Mobile: Below */}
-          <div className="xl:absolute xl:top-6 xl:right-4 xl:w-80">
-            {impactResults && showResults && (
-              <div className="relative">
-                {/* Hide/Show Button */}
-                <button
-                  onClick={() => setShowResults(false)}
-                  className="absolute -top-2 -right-2 z-30 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-lg"
-                  title="Hide Results Panel"
-                >
-                  ×
-                </button>
-                <ResultsPanel results={impactResults} onHide={() => setShowResults(false)} />
-              </div>
-            )}
-
-            {/* Show Results Button (when hidden) */}
-            {impactResults && !showResults && (
-              <button
-                onClick={() => setShowResults(true)}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg transition-colors"
-                title="Show Results Panel"
-              >
-                📊 Show Results
-              </button>
-            )}
+        {/* Left Control Panel Overlay */}
+        <div className={`absolute left-0 top-0 h-full w-96 z-20 ${showControls ? 'overlay-slide' : 'overlay-slide hidden'}`}>
+          <div className="h-full p-4">
+            <ControlPanel onClose={() => setShowControls(false)} />
           </div>
         </div>
+
+        {/* Right Results Panel Overlay */}
+        <div className={`absolute right-0 top-0 h-full w-96 z-20 ${showResults && impactResults ? 'overlay-slide-right' : 'overlay-slide-right hidden'}`}>
+          <div className="h-full p-4">
+            <ResultsPanel />
+          </div>
+        </div>
+
+
+
+        {/* Control Panel Toggle (when hidden) */}
+        {!showControls && (
+          <button
+            onClick={() => setShowControls(true)}
+            className="absolute left-4 top-1/2 transform -translate-y-1/2 z-30 control-button p-3 rounded-lg shadow-lg"
+            title="Show Control Panel"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Results Panel Toggle (when hidden but has results) */}
+        {impactResults && !showResults && (
+          <button
+            onClick={toggleResultsPanel}
+            className="absolute right-4 top-1/2 transform -translate-y-1/2 z-30 control-button p-3 rounded-lg shadow-lg"
+            title="Show Results Panel"
+          >
+            <Activity className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Mobile Overlay Backdrop */}
+        {(showControls || (showResults && impactResults)) && (
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-10 md:hidden"
+            onClick={() => {
+              setShowControls(false);
+              if (showResults && impactResults) {
+                // Don't close results on mobile, just the backdrop
+              }
+            }}
+          />
+        )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t bg-card mt-12">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <div>
-              <p>© 2025 Meteor Impact Simulator</p>
-              <p>Educational tool for understanding meteor impact risks</p>
-            </div>
-            <div className="text-right">
-              <p>Data sources: NASA NEO, USGS</p>
-              <p>Physics models: Established impact scaling relationships</p>
-            </div>
+      {/* Strategic Footer */}
+      <footer className="absolute bottom-0 left-0 right-0 z-10 glass-panel mx-4 mb-2 p-2">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-4">
+            <span>© 2025 Meteor Impact Simulator</span>
+            <span>•</span>
+            <span>Strategic Analysis Platform</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <span>NASA NEO Data</span>
+            <span>•</span>
+            <span>Real Physics Models</span>
           </div>
         </div>
       </footer>
+      </div>
     </div>
   );
 }

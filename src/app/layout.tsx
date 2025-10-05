@@ -15,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Meteor Impact Simulator",
-  description: "Interactive tool to visualize and simulate meteor impacts on Earth using real physics and scientific data from NASA and USGS.",
+  description:
+    "Interactive tool to visualize and simulate meteor impacts on Earth using real physics and scientific data from NASA and USGS.",
 };
 
 export default function RootLayout({

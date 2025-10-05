@@ -36,7 +36,7 @@ export function formatDistance(meters: number): string {
  */
 export function formatEnergy(joules: number): string {
   const exponent = Math.floor(Math.log10(joules));
-  const mantissa = joules / Math.pow(10, exponent);
+  const mantissa = joules / 10 ** exponent;
   return `${mantissa.toFixed(2)} × 10^${exponent} J`;
 }
 
@@ -68,49 +68,55 @@ export function formatMagnitude(magnitude: number): string {
  * Get severity level based on impact energy
  */
 export function getImpactSeverity(megatons: number): {
-  level: 'minimal' | 'low' | 'moderate' | 'high' | 'catastrophic' | 'extinction';
+  level:
+    | "minimal"
+    | "low"
+    | "moderate"
+    | "high"
+    | "catastrophic"
+    | "extinction";
   color: string;
   description: string;
 } {
   if (megatons < 0.001) {
     return {
-      level: 'minimal',
-      color: '#10b981',
-      description: 'Minimal damage, mostly atmospheric effects'
+      level: "minimal",
+      color: "#10b981",
+      description: "Minimal damage, mostly atmospheric effects",
     };
   }
   if (megatons < 0.1) {
     return {
-      level: 'low',
-      color: '#3b82f6',
-      description: 'Local damage, similar to small bomb'
+      level: "low",
+      color: "#3b82f6",
+      description: "Local damage, similar to small bomb",
     };
   }
   if (megatons < 10) {
     return {
-      level: 'moderate',
-      color: '#f59e0b',
-      description: 'City-scale destruction'
+      level: "moderate",
+      color: "#f59e0b",
+      description: "City-scale destruction",
     };
   }
   if (megatons < 1000) {
     return {
-      level: 'high',
-      color: '#ef4444',
-      description: 'Regional catastrophe'
+      level: "high",
+      color: "#ef4444",
+      description: "Regional catastrophe",
     };
   }
   if (megatons < 100000) {
     return {
-      level: 'catastrophic',
-      color: '#dc2626',
-      description: 'Continental devastation'
+      level: "catastrophic",
+      color: "#dc2626",
+      description: "Continental devastation",
     };
   }
   return {
-    level: 'extinction',
-    color: '#7f1d1d',
-    description: 'Global extinction event'
+    level: "extinction",
+    color: "#7f1d1d",
+    description: "Global extinction event",
   };
 }
 
@@ -119,10 +125,10 @@ export function getImpactSeverity(megatons: number): {
  */
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
-  wait: number
+  wait: number,
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout | null = null;
-  
+
   return (...args: Parameters<T>) => {
     if (timeout) clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);
@@ -134,16 +140,16 @@ export function debounce<T extends (...args: any[]) => any>(
  */
 export function getHistoricalComparison(megatons: number): string {
   if (megatons < 0.015) {
-    return 'Chelyabinsk meteor (2013)';
+    return "Chelyabinsk meteor (2013)";
   }
   if (megatons < 15) {
-    return 'Tunguska event (1908)';
+    return "Tunguska event (1908)";
   }
   if (megatons < 50) {
-    return 'Largest nuclear test (Tsar Bomba)';
+    return "Largest nuclear test (Tsar Bomba)";
   }
   if (megatons < 10000) {
-    return 'Chicxulub impactor (dinosaur extinction)';
+    return "Chicxulub impactor (dinosaur extinction)";
   }
-  return 'Larger than any known impact in history';
+  return "Larger than any known impact in history";
 }

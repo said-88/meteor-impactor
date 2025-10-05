@@ -1,0 +1,237 @@
+import { create } from "zustand";
+import { devtools } from "zustand/middleware";
+import { ImpactCalculator } from "@/lib/physics/impactCalculator";
+import { NASAAPIService } from "@/lib/nasa-api";
+import type {
+  ImpactLocation,
+  ImpactResults,
+  MeteorParameters,
+  NASA_Asteroid,
+} from "@/types/asteroid";
+
+interface MeteorState {
+  // Meteor parameters
+  parameters: MeteorParameters;
+
+  // Impact location
+  impactLocation: ImpactLocation;
+
+  // UI state
+  showResults: boolean;
+  isAnimating: boolean;
+  showInfo: string | null;
+
+  // Computed values
+  impactResults: ImpactResults | null;
+
+  // NASA asteroid data
+  nasaAsteroids: NASA_Asteroid[];
+  selectedNASAId: string | null;
+  isLoadingNASA: boolean;
+  nasaError: string | null;
+
+  // Actions
+  setParameters: (parameters: MeteorParameters) => void;
+  updateParameter: <K extends keyof MeteorParameters>(
+    key: K,
+    value: MeteorParameters[K],
+  ) => void;
+  setImpactLocation: (location: ImpactLocation) => void;
+  setShowResults: (show: boolean) => void;
+  setIsAnimating: (animating: boolean) => void;
+  setShowInfo: (info: string | null) => void;
+
+  // NASA actions
+  loadNASAasteroids: () => Promise<void>;
+  load2025CloseApproaches: () => Promise<void>;
+  selectNASAsteroid: (asteroidId: string) => void;
+  setIsLoadingNASA: (loading: boolean) => void;
+
+  // Utility actions
+  randomizeParameters: () => void;
+  resetToDefaults: () => void;
+  toggleResultsPanel: () => void;
+  startAnimation: () => void;
+  stopAnimation: () => void;
+  calculateImpact: () => void;
+}
+
+const defaultLocation: ImpactLocation = {
+  lat: 40.7128,
+  lng: -74.006,
+};
+
+const defaultParameters = ImpactCalculator.getDefaultParameters();
+
+export const useMeteorStore = create<MeteorState>()(
+  devtools(
+    (set, get) => ({
+      // Initial state
+      parameters: defaultParameters,
+      impactLocation: defaultLocation,
+      showResults: true,
+      isAnimating: false,
+      showInfo: null,
+      impactResults: ImpactCalculator.calculateImpact(defaultParameters, 100),
+      nasaAsteroids: [],
+      selectedNASAId: null,
+      isLoadingNASA: false,
+      nasaError: null,
+
+      // Actions
+      setParameters: (parameters: MeteorParameters) => {
+        const results = ImpactCalculator.calculateImpact(parameters, 100);
+        const phases = ImpactCalculator.calculateImpactPhases(parameters, results.energy.joules);
+        set({
+          parameters,
+          impactResults: results,
+          isAnimating: true, // Auto-animate when parameters change
+        });
+
+        // Auto-stop animation after total phase duration
+        setTimeout(() => {
+          set({ isAnimating: false });
+        }, phases.totalDuration * 1000);
+      },
+
+      updateParameter: <K extends keyof MeteorParameters>(
+        key: K,
+        value: MeteorParameters[K],
+      ) => {
+        const currentParams = get().parameters;
+        const newParams = {
+          ...currentParams,
+          [key]: value,
+        };
+        get().setParameters(newParams);
+      },
+
+      setImpactLocation: (location: ImpactLocation) => {
+        set({ impactLocation: location });
+      },
+
+      setShowResults: (show: boolean) => {
+        set({ showResults: show });
+      },
+
+      setIsAnimating: (animating: boolean) => {
+        set({ isAnimating: animating });
+      },
+
+      setShowInfo: (info: string | null) => {
+        set({ showInfo: info });
+      },
+
+      // NASA actions
+      loadNASAasteroids: async () => {
+        set({ isLoadingNASA: true, nasaError: null });
+        try {
+          const asteroids = await NASAAPIService.getFamousAsteroids();
+          set({ nasaAsteroids: asteroids, isLoadingNASA: false });
+        } catch (error) {
+          console.error("Failed to load NASA asteroids:", error);
+          const errorMessage = error instanceof Error ? error.message : "Failed to load NASA data";
+          set({ isLoadingNASA: false, nasaError: errorMessage });
+        }
+      },
+
+      load2025CloseApproaches: async () => {
+        set({ isLoadingNASA: true, nasaError: null });
+        try {
+          const asteroids = await NASAAPIService.getRecentCloseApproaches();
+          set({ nasaAsteroids: asteroids, isLoadingNASA: false });
+        } catch (error) {
+          console.error("Failed to load recent close approaches:", error);
+          const errorMessage = error instanceof Error ? error.message : "Failed to load recent data";
+          set({ isLoadingNASA: false, nasaError: errorMessage });
+        }
+      },
+
+      selectNASAsteroid: (asteroidId: string) => {
+        const { nasaAsteroids } = get();
+        const asteroid = nasaAsteroids.find((a) => a.id === asteroidId);
+
+        if (asteroid) {
+          // Convert NASA data to meteor parameters
+          const diameter = (asteroid.estimatedDiameter.min + asteroid.estimatedDiameter.max) / 2;
+          const velocity = asteroid.closeApproachData.velocity;
+          const angle = 45; // Default impact angle
+          const composition = "rocky" as const; // Assume rocky composition
+          const density = ImpactCalculator.getDensityForComposition(composition);
+
+          const parameters: MeteorParameters = {
+            diameter,
+            velocity,
+            angle,
+            density,
+            composition,
+          };
+
+          get().setParameters(parameters);
+          set({ selectedNASAId: asteroidId });
+        }
+      },
+
+      setIsLoadingNASA: (loading: boolean) => {
+        set({ isLoadingNASA: loading });
+      },
+
+      calculateImpact: () => {
+        const { parameters } = get();
+        const results = ImpactCalculator.calculateImpact(parameters, 100);
+        set({ impactResults: results });
+      },
+
+      // Utility actions
+      randomizeParameters: () => {
+        const randomParams: MeteorParameters = {
+          diameter: Math.random() * 990 + 10, // 10-1000m
+          velocity: Math.random() * 61 + 11, // 11-72 km/s
+          angle: Math.random() * 90, // 0-90 degrees
+          density: ImpactCalculator.getDensityForComposition(
+            ["rocky", "iron", "icy"][Math.floor(Math.random() * 3)],
+          ),
+          composition: ["rocky", "iron", "icy"][
+            Math.floor(Math.random() * 3)
+          ] as "rocky" | "iron" | "icy",
+        };
+
+        get().setParameters(randomParams);
+      },
+
+      resetToDefaults: () => {
+        set({
+          parameters: defaultParameters,
+          impactLocation: defaultLocation,
+          impactResults: ImpactCalculator.calculateImpact(
+            defaultParameters,
+            100,
+          ),
+          isAnimating: false,
+        });
+      },
+
+      toggleResultsPanel: () => {
+        set((state) => ({ showResults: !state.showResults }));
+      },
+
+      startAnimation: () => {
+        const { parameters, impactResults } = get();
+        if (impactResults) {
+          const phases = ImpactCalculator.calculateImpactPhases(parameters, impactResults.energy.joules);
+          set({ isAnimating: true });
+          setTimeout(() => {
+            set({ isAnimating: false });
+          }, phases.totalDuration * 1000);
+        }
+      },
+
+      stopAnimation: () => {
+        set({ isAnimating: false });
+      },
+    }),
+    {
+      name: "meteor-store",
+    },
+  ),
+);

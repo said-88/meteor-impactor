@@ -6,7 +6,7 @@ export interface MeteorParameters {
   composition: AsteroidComposition;
 }
 
-export type AsteroidComposition = 'rocky' | 'iron' | 'icy';
+export type AsteroidComposition = "rocky" | "iron" | "icy";
 
 export interface ImpactLocation {
   lat: number;
@@ -46,23 +46,33 @@ export interface ImpactResults {
   };
 }
 
-export interface NASAAsteroid {
+export interface NASA_Asteroid {
   id: string;
+  neo_reference_id?: string;
   name: string;
+  designation?: string;
+  nasa_jpl_url?: string;
+  absolute_magnitude_h?: number;
   estimatedDiameter: {
     min: number;
     max: number;
   };
   closeApproachData: {
     date: string;
-    velocity: number;
-    missDistance: number;
+    velocity: number; // km/s
+    missDistance: number; // km
   };
   isPotentiallyHazardous: boolean;
+  orbitalData?: {
+    orbit_class: {
+      orbit_class_type: string;
+      orbit_class_description: string;
+    };
+  };
 }
 
 export interface MitigationStrategy {
-  type: 'kinetic-impactor' | 'gravity-tractor' | 'nuclear' | 'laser-ablation';
+  type: "kinetic-impactor" | "gravity-tractor" | "nuclear" | "laser-ablation";
   name: string;
   description: string;
   leadTime: number; // years needed before impact
