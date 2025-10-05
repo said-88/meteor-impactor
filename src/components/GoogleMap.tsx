@@ -1,16 +1,27 @@
 "use client";
 
-import { APIProvider, Map as GoogleMapComponent, Marker } from "@vis.gl/react-google-maps";
-import { useCallback, useEffect, useState } from "react";
+import { APIProvider, Map as GoogleMapComponent, AdvancedMarker, Pin } from "@vis.gl/react-google-maps";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useMeteorStore } from "@/lib/store/meteorStore";
 import { ImpactCoordinator } from "./effects/ImpactCoordinator";
+import type { ImpactSite } from "@/lib/store/meteorStore";
 
 export function GoogleMap() {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const overlayRef = useRef<google.maps.OverlayView | null>(null);
+  const [markerPositions, setMarkerPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
 
-  const { impactLocation, impactResults, isAnimating, setImpactLocation } =
-    useMeteorStore();
+  const { 
+    impactLocation, 
+    impactResults, 
+    isAnimating, 
+    setImpactLocation,
+    impactSites,
+    activeImpactId,
+    clearImpact,
+  } = useMeteorStore();
 
   console.log("🗺️ GoogleMap component rendering");
   console.log("🔑 API Key configured:", !!apiKey);
@@ -34,6 +45,88 @@ export function GoogleMap() {
     updateDimensions();
     window.addEventListener("resize", updateDimensions);
     return () => window.removeEventListener("resize", updateDimensions);
+  }, []);
+
+  // Update marker screen positions when map moves
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    const updateMarkerPositions = () => {
+      const map = mapRef.current;
+      if (!map) return;
+
+      // Create overlay once if it doesn't exist
+      if (!overlayRef.current) {
+        const overlay = new google.maps.OverlayView();
+        overlay.draw = function() {};
+        overlay.setMap(map);
+        overlayRef.current = overlay;
+      }
+
+      const overlay = overlayRef.current;
+      const projection = overlay.getProjection();
+      
+      if (!projection) {
+        // Projection not ready yet, wait for it
+        google.maps.event.addListenerOnce(overlay, 'projection_changed', updateMarkerPositions);
+        return;
+      }
+
+      const newPositions = new Map<string, { x: number, y: number }>();
+
+      // Helper function to convert lat/lng to pixel coordinates
+      const getPixelPosition = (lat: number, lng: number) => {
+        const point = projection.fromLatLngToContainerPixel(
+          new google.maps.LatLng(lat, lng)
+        );
+        return point ? { x: point.x, y: point.y } : null;
+      };
+
+      // Add preview marker position
+      const previewPos = getPixelPosition(impactLocation.lat, impactLocation.lng);
+      if (previewPos) {
+        newPositions.set('preview', previewPos);
+        console.log('📍 Preview marker pixel position:', previewPos);
+      }
+
+      // Add launched impact site positions
+      impactSites.forEach((site) => {
+        const sitePos = getPixelPosition(site.location.lat, site.location.lng);
+        if (sitePos) {
+          newPositions.set(site.id, sitePos);
+          console.log(`🎯 Impact site ${site.id} pixel position:`, sitePos);
+        }
+      });
+
+      setMarkerPositions(newPositions);
+      console.log('🗺️ All marker positions updated:', newPositions.size, 'markers');
+    };
+
+    const map = mapRef.current;
+    const boundsListener = map.addListener('bounds_changed', updateMarkerPositions);
+    const zoomListener = map.addListener('zoom_changed', updateMarkerPositions);
+    
+    updateMarkerPositions();
+
+    return () => {
+      if (boundsListener) google.maps.event.removeListener(boundsListener);
+      if (zoomListener) google.maps.event.removeListener(zoomListener);
+      // Don't remove overlay here - let it persist across re-renders
+    };
+  }, [impactLocation, impactSites, dimensions]);
+
+  // Cleanup overlay only on component unmount
+  useEffect(() => {
+    return () => {
+      if (overlayRef.current) {
+        try {
+          overlayRef.current.setMap(null);
+        } catch (e) {
+          console.warn('Error cleaning up overlay:', e);
+        }
+        overlayRef.current = null;
+      }
+    };
   }, []);
 
   const handleMapClick = useCallback(
@@ -64,6 +157,12 @@ export function GoogleMap() {
     },
     [setImpactLocation],
   );
+
+  const onMapLoad = useCallback((event: any) => {
+    if (event?.map) {
+      mapRef.current = event.map;
+    }
+  }, []);
 
   if (!apiKey) {
     console.error("❌ No API key found");
@@ -96,28 +195,123 @@ export function GoogleMap() {
           gestureHandling="greedy"
           clickableIcons={false}
           onClick={handleMapClick}
+          onCameraChanged={onMapLoad}
+          mapId="meteor-impact-map"
           style={{
             width: "100%",
             height: "100%",
           }}
         >
-          {/* Marker */}
-          <Marker
-            position={impactLocation}
-            draggable={true}
-            onDragEnd={handleMarkerDragEnd}
-          />
+          {/* Preview marker - only show when NOT animating or no active impact */}
+          {!isAnimating && (
+            <AdvancedMarker
+              position={impactLocation}
+              draggable={true}
+              onDragEnd={handleMarkerDragEnd}
+            >
+              <div className="relative animate-pulse">
+                <img
+                  src="/asteroid-icon.svg"
+                  alt="Asteroid impact location"
+                  className="w-8 h-8 drop-shadow-lg"
+                  style={{
+                    filter: 'drop-shadow(0 0 8px rgba(255, 107, 0, 0.6))'
+                  }}
+                />
+              </div>
+            </AdvancedMarker>
+          )}
+
+          {/* Launched impact sites - permanent markers */}
+          {impactSites.map((site) => (
+            <AdvancedMarker
+              key={site.id}
+              position={site.location}
+              onClick={() => clearImpact(site.id)}
+            >
+              <div className="relative cursor-pointer group">
+                <img
+                  src="/asteroid-icon.svg"
+                  alt="Past impact site"
+                  className="w-6 h-6 opacity-60 group-hover:opacity-100 transition-opacity"
+                  style={{
+                    filter: 'grayscale(0.7) brightness(0.6) drop-shadow(0 0 4px rgba(0, 0, 0, 0.3))'
+                  }}
+                />
+                <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                  Click to remove
+                </div>
+              </div>
+            </AdvancedMarker>
+          ))}
         </GoogleMapComponent>
       </APIProvider>
 
-      {/* Impact Visual Effects */}
-      {impactResults && (
-        <ImpactCoordinator
-          results={impactResults}
-          width={dimensions.width}
-          height={dimensions.height}
-        />
-      )}
+      {/* Active Impact Animation */}
+      {isAnimating && activeImpactId && impactSites.find(site => site.id === activeImpactId) && (() => {
+        const activeSite = impactSites.find(site => site.id === activeImpactId);
+        const position = markerPositions.get(activeImpactId);
+        console.log('🎬 Active animation for:', activeImpactId, 'at position:', position);
+        console.log('📐 Canvas dimensions:', dimensions);
+        if (activeSite && position) {
+          return (
+            <ImpactCoordinator
+              results={activeSite.results}
+              width={dimensions.width}
+              height={dimensions.height}
+              centerX={position.x}
+              centerY={position.y}
+            />
+          );
+        }
+        return null;
+      })()}
+
+      {/* Permanent Crater Overlays for all launched sites */}
+      {impactSites.map((site) => {
+        const position = markerPositions.get(site.id);
+        // Show crater only when NOT currently animating for this site
+        if (!position || (isAnimating && site.id === activeImpactId)) return null;
+        
+        // Calculate crater size based on physics results - similar to neal.fun
+        const baseCraterRadius = site.results.crater.diameter / 2; // radius in meters
+        const craterPixelRadius = Math.max(Math.min(baseCraterRadius / 50, 80), 30); // scale to pixels, min 30px, max 80px
+        
+        return (
+          <div
+            key={`crater-${site.id}`}
+            className="absolute pointer-events-none"
+            style={{
+              left: position.x - craterPixelRadius,
+              top: position.y - craterPixelRadius,
+              width: craterPixelRadius * 2,
+              height: craterPixelRadius * 2,
+              zIndex: 10,
+            }}
+          >
+            <img
+              src="/crater.svg"
+              alt="Impact crater"
+              className="w-full h-full"
+              style={{
+                opacity: 0.85,
+                filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5))',
+              }}
+            />
+            {/* Crater label like neal.fun */}
+            <div
+              className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap"
+              style={{
+                fontSize: '10px',
+                fontWeight: 'bold',
+                letterSpacing: '0.5px',
+              }}
+            >
+              CRATER
+            </div>
+          </div>
+        );
+      })}
       
       {/* Legend */}
       {impactResults && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, RotateCcw, Zap, Activity } from "lucide-react";
+import { Info, RotateCcw, Zap, Activity, Rocket, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,11 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
     loadNASAasteroids,
     load2025CloseApproaches,
     selectNASAsteroid,
+    launchAsteroid,
+    clearAllImpacts,
+    impactSites,
+    isAnimating,
+    isLaunching,
   } = useMeteorStore();
 
   function getInfoText(key: string): React.ReactNode {
@@ -79,6 +84,33 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Launch Controls */}
+          <div className="space-y-2">
+            <Button
+              onClick={launchAsteroid}
+              disabled={isAnimating || isLaunching}
+              className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-bold py-3 text-base"
+            >
+              <Rocket className="w-5 h-5 mr-2" />
+              {isLaunching ? "LAUNCHING..." : "LAUNCH ASTEROID"}
+            </Button>
+            
+            {impactSites.length > 0 && (
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{impactSites.length} impact site{impactSites.length > 1 ? 's' : ''}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAllImpacts}
+                  className="h-6 text-xs"
+                >
+                  <Trash2 className="w-3 h-3 mr-1" />
+                  Clear All
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 

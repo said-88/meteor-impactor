@@ -9,17 +9,31 @@ import type {
   NASA_Asteroid,
 } from "@/types/asteroid";
 
+export interface ImpactSite {
+  id: string;
+  location: ImpactLocation;
+  parameters: MeteorParameters;
+  results: ImpactResults;
+  timestamp: Date;
+  isLaunched: boolean; // true after launch, false if just preview
+}
+
 interface MeteorState {
   // Meteor parameters
   parameters: MeteorParameters;
 
-  // Impact location
+  // Impact location for preview marker
   impactLocation: ImpactLocation;
+
+  // Multiple impact sites
+  impactSites: ImpactSite[];
+  activeImpactId: string | null;
 
   // UI state
   showResults: boolean;
   isAnimating: boolean;
   showInfo: string | null;
+  isLaunching: boolean;
 
   // Computed values
   impactResults: ImpactResults | null;
@@ -40,6 +54,11 @@ interface MeteorState {
   setShowResults: (show: boolean) => void;
   setIsAnimating: (animating: boolean) => void;
   setShowInfo: (info: string | null) => void;
+
+  // Impact site actions
+  launchAsteroid: () => void;
+  clearImpact: (id: string) => void;
+  clearAllImpacts: () => void;
 
   // NASA actions
   loadNASAasteroids: () => Promise<void>;
@@ -69,9 +88,12 @@ export const useMeteorStore = create<MeteorState>()(
       // Initial state
       parameters: defaultParameters,
       impactLocation: defaultLocation,
+      impactSites: [],
+      activeImpactId: null,
       showResults: true,
       isAnimating: false,
       showInfo: null,
+      isLaunching: false,
       impactResults: ImpactCalculator.calculateImpact(defaultParameters, 100),
       nasaAsteroids: [],
       selectedNASAId: null,
@@ -81,17 +103,10 @@ export const useMeteorStore = create<MeteorState>()(
       // Actions
       setParameters: (parameters: MeteorParameters) => {
         const results = ImpactCalculator.calculateImpact(parameters, 100);
-        const phases = ImpactCalculator.calculateImpactPhases(parameters, results.energy.joules);
         set({
           parameters,
           impactResults: results,
-          isAnimating: true, // Auto-animate when parameters change
         });
-
-        // Auto-stop animation after total phase duration
-        setTimeout(() => {
-          set({ isAnimating: false });
-        }, phases.totalDuration * 1000);
       },
 
       updateParameter: <K extends keyof MeteorParameters>(
@@ -120,6 +135,50 @@ export const useMeteorStore = create<MeteorState>()(
 
       setShowInfo: (info: string | null) => {
         set({ showInfo: info });
+      },
+
+      // Impact site actions
+      launchAsteroid: () => {
+        const { parameters, impactLocation, impactResults } = get();
+        if (!impactResults) return;
+
+        const newSite: ImpactSite = {
+          id: `impact-${Date.now()}`,
+          location: impactLocation,
+          parameters: { ...parameters },
+          results: { ...impactResults },
+          timestamp: new Date(),
+          isLaunched: true,
+        };
+
+        set((state) => ({
+          impactSites: [...state.impactSites, newSite],
+          activeImpactId: newSite.id,
+          isAnimating: true,
+          isLaunching: true,
+        }));
+
+        // Start animation sequence
+        const phases = ImpactCalculator.calculateImpactPhases(parameters, impactResults.energy.joules);
+        
+        setTimeout(() => {
+          set({ isAnimating: false, isLaunching: false });
+        }, phases.totalDuration * 1000);
+      },
+
+      clearImpact: (id: string) => {
+        set((state) => ({
+          impactSites: state.impactSites.filter((site) => site.id !== id),
+          activeImpactId: state.activeImpactId === id ? null : state.activeImpactId,
+        }));
+      },
+
+      clearAllImpacts: () => {
+        set({
+          impactSites: [],
+          activeImpactId: null,
+          isAnimating: false,
+        });
       },
 
       // NASA actions
@@ -216,8 +275,8 @@ export const useMeteorStore = create<MeteorState>()(
       },
 
       startAnimation: () => {
-        const { parameters, impactResults } = get();
-        if (impactResults) {
+        const { parameters, impactResults, activeImpactId } = get();
+        if (impactResults && activeImpactId) {
           const phases = ImpactCalculator.calculateImpactPhases(parameters, impactResults.energy.joules);
           set({ isAnimating: true });
           setTimeout(() => {

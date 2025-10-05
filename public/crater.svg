@@ -1,0 +1,64 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Main crater gradient -->
+    <radialGradient id="craterMain" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#1a0f0a;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#2d1b13;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#4a2f1f;stop-opacity:1" />
+      <stop offset="85%" style="stop-color:#5c3a26;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6b4423;stop-opacity:0.9" />
+    </radialGradient>
+    
+    <!-- Inner shadow gradient -->
+    <radialGradient id="craterShadow" cx="45%" cy="45%" r="50%">
+      <stop offset="0%" style="stop-color:#000000;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#0f0805;stop-opacity:0.5" />
+      <stop offset="100%" style="stop-color:#1a0f0a;stop-opacity:0" />
+    </radialGradient>
+    
+    <!-- Rim highlight gradient -->
+    <radialGradient id="rimHighlight" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#8B4513;stop-opacity:0" />
+      <stop offset="70%" style="stop-color:#A0522D;stop-opacity:0.3" />
+      <stop offset="85%" style="stop-color:#CD853F;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#8B7355;stop-opacity:0.4" />
+    </radialGradient>
+
+    <!-- Texture filter -->
+    <filter id="craterTexture">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="5" seed="2" />
+      <feColorMatrix type="saturate" values="0.2" />
+      <feBlend mode="multiply" in="SourceGraphic" />
+    </filter>
+  </defs>
+
+  <!-- Outer rim glow -->
+  <circle cx="100" cy="100" r="95" fill="url(#rimHighlight)" opacity="0.5" />
+  
+  <!-- Main crater bowl -->
+  <circle cx="100" cy="100" r="85" fill="url(#craterMain)" filter="url(#craterTexture)" />
+  
+  <!-- Inner shadow for depth -->
+  <circle cx="100" cy="100" r="70" fill="url(#craterShadow)" />
+  
+  <!-- Rim details -->
+  <circle cx="100" cy="100" r="85" fill="none" stroke="#5c3a26" stroke-width="3" opacity="0.7" />
+  <circle cx="100" cy="100" r="88" fill="none" stroke="#8B7355" stroke-width="2" opacity="0.4" />
+  
+  <!-- Inner crater details -->
+  <circle cx="100" cy="100" r="60" fill="none" stroke="#0f0805" stroke-width="1.5" opacity="0.6" />
+  <circle cx="100" cy="100" r="45" fill="none" stroke="#1a0f0a" stroke-width="1" opacity="0.5" />
+  
+  <!-- Small impact craters on the rim -->
+  <ellipse cx="130" cy="70" rx="8" ry="6" fill="#2d1b13" opacity="0.6" />
+  <ellipse cx="70" cy="130" rx="6" ry="5" fill="#2d1b13" opacity="0.5" />
+  <ellipse cx="145" cy="110" rx="5" ry="4" fill="#2d1b13" opacity="0.4" />
+  <ellipse cx="60" cy="85" rx="7" ry="5" fill="#2d1b13" opacity="0.5" />
+  <ellipse cx="115" cy="145" rx="6" ry="5" fill="#2d1b13" opacity="0.4" />
+  
+  <!-- Ejecta rays (subtle) -->
+  <line x1="100" y1="100" x2="180" y2="40" stroke="#5c3a26" stroke-width="2" opacity="0.15" />
+  <line x1="100" y1="100" x2="20" y2="160" stroke="#5c3a26" stroke-width="2" opacity="0.15" />
+  <line x1="100" y1="100" x2="160" y2="170" stroke="#5c3a26" stroke-width="1.5" opacity="0.12" />
+  <line x1="100" y1="100" x2="30" y2="30" stroke="#5c3a26" stroke-width="1.5" opacity="0.12" />
+</svg>
