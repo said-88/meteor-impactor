@@ -854,8 +854,7 @@ export const useMeteorStore = create<MeteorState>()(
 
           const scenarioAnalysis = await PHAAnalyst.generateScenarioAnalysis(
             pha,
-            impactResults,
-            parameters
+            impactResults
           );
 
           console.log('✅ Scenario analysis completed:', scenarioAnalysis);
