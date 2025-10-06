@@ -44,6 +44,7 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
     impactSites,
     isAnimating,
     isLaunching,
+    isLocked,
   } = useMeteorStore();
 
   function getInfoText(key: string): React.ReactNode {
@@ -73,8 +74,9 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={randomizeParameters}
-                className="control-button"
+                onClick={() => !isLocked && randomizeParameters()}
+                disabled={isLocked}
+                className={`control-button ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
                 RANDOM
@@ -145,8 +147,9 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
               max={1000}
               step={10}
               value={[parameters.diameter]}
-              onValueChange={([value]) => updateParameter("diameter", value)}
-              className="w-full"
+              onValueChange={([value]) => !isLocked && updateParameter("diameter", value)}
+              disabled={isLocked}
+              className={`w-full ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
           </div>
 
@@ -173,8 +176,9 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
               max={72}
               step={1}
               value={[parameters.velocity]}
-              onValueChange={([value]) => updateParameter("velocity", value)}
-              className="w-full"
+              onValueChange={([value]) => !isLocked && updateParameter("velocity", value)}
+              disabled={isLocked}
+              className={`w-full ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
           </div>
 
@@ -201,8 +205,9 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
               max={90}
               step={5}
               value={[parameters.angle]}
-              onValueChange={([value]) => updateParameter("angle", value)}
-              className="w-full"
+              onValueChange={([value]) => !isLocked && updateParameter("angle", value)}
+              disabled={isLocked}
+              className={`w-full ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
           </div>
 
@@ -224,8 +229,9 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
             <Select
               value={parameters.composition}
               onValueChange={(value: string) =>
-                updateParameter("composition", value as "rocky" | "iron" | "icy")
+                !isLocked && updateParameter("composition", value as "rocky" | "iron" | "icy")
               }
+              disabled={isLocked}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -267,13 +273,17 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  const defaults = ImpactCalculator.getDefaultParameters();
-                  updateParameter("diameter", defaults.diameter);
-                  updateParameter("velocity", defaults.velocity);
-                  updateParameter("angle", defaults.angle);
-                  updateParameter("density", defaults.density);
-                  updateParameter("composition", defaults.composition);
+                  if (!isLocked) {
+                    const defaults = ImpactCalculator.getDefaultParameters();
+                    updateParameter("diameter", defaults.diameter);
+                    updateParameter("velocity", defaults.velocity);
+                    updateParameter("angle", defaults.angle);
+                    updateParameter("density", defaults.density);
+                    updateParameter("composition", defaults.composition);
+                  }
                 }}
+                disabled={isLocked}
+                className={`${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 Default
               </Button>
@@ -281,12 +291,16 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  updateParameter("diameter", 50);
-                  updateParameter("velocity", 20);
-                  updateParameter("angle", 45);
-                  updateParameter("density", 3000);
-                  updateParameter("composition", "rocky");
+                  if (!isLocked) {
+                    updateParameter("diameter", 50);
+                    updateParameter("velocity", 20);
+                    updateParameter("angle", 45);
+                    updateParameter("density", 3000);
+                    updateParameter("composition", "rocky");
+                  }
                 }}
+                disabled={isLocked}
+                className={`${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 Tunguska
               </Button>
@@ -294,12 +308,16 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  updateParameter("diameter", 20);
-                  updateParameter("velocity", 18);
-                  updateParameter("angle", 20);
-                  updateParameter("density", 3300);
-                  updateParameter("composition", "rocky");
+                  if (!isLocked) {
+                    updateParameter("diameter", 20);
+                    updateParameter("velocity", 18);
+                    updateParameter("angle", 20);
+                    updateParameter("density", 3300);
+                    updateParameter("composition", "rocky");
+                  }
                 }}
+                disabled={isLocked}
+                className={`${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 Chelyabinsk
               </Button>
@@ -307,12 +325,16 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  updateParameter("diameter", 10000);
-                  updateParameter("velocity", 20);
-                  updateParameter("angle", 45);
-                  updateParameter("density", 3000);
-                  updateParameter("composition", "rocky");
+                  if (!isLocked) {
+                    updateParameter("diameter", 10000);
+                    updateParameter("velocity", 20);
+                    updateParameter("angle", 45);
+                    updateParameter("density", 3000);
+                    updateParameter("composition", "rocky");
+                  }
                 }}
+                disabled={isLocked}
+                className={`${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 Dinosaur
               </Button>
@@ -334,9 +356,9 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full border-primary text-primary hover:bg-primary/10 hover:text-primary bg-primary/5"
-                  onClick={loadDangerousPHAs}
-                  disabled={isLoadingDangerous}
+                  className={`w-full border-primary text-primary hover:bg-primary/10 hover:text-primary bg-primary/5 ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={() => !isLocked && loadDangerousPHAs()}
+                  disabled={isLoadingDangerous || isLocked}
                 >
                   {isLoadingDangerous ? (
                     <>
@@ -424,8 +446,9 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={loadNASAasteroids}
-                  disabled={isLoadingNASA}
+                  onClick={() => !isLocked && loadNASAasteroids()}
+                  disabled={isLoadingNASA || isLocked}
+                  className={`${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Zap className="w-4 h-4 mr-2" />
                   Famous
@@ -433,8 +456,9 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={load2025CloseApproaches}
-                  disabled={isLoadingNASA}
+                  onClick={() => !isLocked && load2025CloseApproaches()}
+                  disabled={isLoadingNASA || isLocked}
+                  className={`${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Zap className="w-4 h-4 mr-2" />
                   Recent NEOs
@@ -461,7 +485,8 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
                 <div className="space-y-2">
                   <Select
                     value={selectedNASAId || ""}
-                    onValueChange={selectNASAsteroid}
+                    onValueChange={(value) => !isLocked && selectNASAsteroid(value)}
+                    disabled={isLocked}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Choose a real asteroid..." />

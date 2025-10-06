@@ -35,6 +35,7 @@ interface MeteorState {
   isAnimating: boolean;
   showInfo: string | null;
   isLaunching: boolean;
+  isLocked: boolean; // Controls interface lock during launch
 
   // Computed values
   impactResults: ImpactResults | null;
@@ -119,6 +120,7 @@ export const useMeteorStore = create<MeteorState>()(
       isAnimating: false,
       showInfo: null,
       isLaunching: false,
+      isLocked: false,
       impactResults: ImpactCalculator.calculateImpact(defaultParameters, 100),
       nasaAsteroids: [],
       selectedNASAId: null,
@@ -189,13 +191,25 @@ export const useMeteorStore = create<MeteorState>()(
           activeImpactId: newSite.id,
           isAnimating: true,
           isLaunching: true,
+          isLocked: true, // Lock interface during launch
         }));
 
         // Start animation sequence
         const phases = ImpactCalculator.calculateImpactPhases(parameters, impactResults.energy.joules);
-        
+
+        // Temporarily block buttons for 3 seconds to let user see the simulation
         setTimeout(() => {
-          set({ isAnimating: false, isLaunching: false });
+          set({
+            isLocked: false // Unlock interface after 3 seconds so user can see simulation
+          });
+        }, 3000);
+
+        // Continue animation until completion
+        setTimeout(() => {
+          set({
+            isAnimating: false,
+            isLaunching: false,
+          });
         }, phases.totalDuration * 1000);
       },
 
