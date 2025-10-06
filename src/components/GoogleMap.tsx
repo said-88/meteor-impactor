@@ -4,6 +4,8 @@ import { APIProvider, Map as GoogleMapComponent, AdvancedMarker, Pin } from "@vi
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useMeteorStore } from "@/lib/store/meteorStore";
 import { ImpactCoordinator } from "./effects/ImpactCoordinator";
+import { ProceduralCrater } from "./crater/ProceduralCrater";
+import { generateAsteroidData } from "@/lib/asteroid/asteroid-data-generator";
 import type { ImpactSite } from "@/lib/store/meteorStore";
 
 export function GoogleMap() {
@@ -267,49 +269,32 @@ export function GoogleMap() {
         return null;
       })()}
 
-      {/* Permanent Crater Overlays for all launched sites */}
+      {/* Procedural Crater Overlays for all launched sites */}
       {impactSites.map((site) => {
         const position = markerPositions.get(site.id);
         // Show crater only when NOT currently animating for this site
         if (!position || (isAnimating && site.id === activeImpactId)) return null;
-        
-        // Calculate crater size based on physics results - similar to neal.fun
-        const baseCraterRadius = site.results.crater.diameter / 2; // radius in meters
-        const craterPixelRadius = Math.max(Math.min(baseCraterRadius / 50, 80), 30); // scale to pixels, min 30px, max 80px
-        
+
+        // Generate asteroid data for this impact site
+        // For now using default parameters - in full implementation would use stored parameters
+        const asteroidData = generateAsteroidData(
+          100, // diameter - would come from original parameters
+          15,  // velocity - would come from original parameters
+          45,  // angle - would come from original parameters
+          3000 // mass - would come from original parameters
+        );
+
         return (
-          <div
+          <ProceduralCrater
             key={`crater-${site.id}`}
-            className="absolute pointer-events-none"
-            style={{
-              left: position.x - craterPixelRadius,
-              top: position.y - craterPixelRadius,
-              width: craterPixelRadius * 2,
-              height: craterPixelRadius * 2,
-              zIndex: 10,
-            }}
-          >
-            <img
-              src="/crater.svg"
-              alt="Impact crater"
-              className="w-full h-full"
-              style={{
-                opacity: 0.85,
-                filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5))',
-              }}
-            />
-            {/* Crater label like neal.fun */}
-            <div
-              className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap"
-              style={{
-                fontSize: '10px',
-                fontWeight: 'bold',
-                letterSpacing: '0.5px',
-              }}
-            >
-              CRATER
-            </div>
-          </div>
+            results={site.results}
+            asteroidData={asteroidData}
+            position={position}
+            mapWidth={dimensions.width}
+            mapHeight={dimensions.height}
+            showLabel={true}
+            className="crater-overlay"
+          />
         );
       })}
       

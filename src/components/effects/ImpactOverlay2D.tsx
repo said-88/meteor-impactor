@@ -5,6 +5,16 @@ import { gsap } from 'gsap';
 import { useMeteorStore } from '@/lib/store/meteorStore';
 import { ImpactCalculator } from '@/lib/physics/impactCalculator';
 import type { ImpactResults } from '@/types/asteroid';
+import { 
+  generateAsteroidData, 
+  type AsteroidVisualData 
+} from '@/lib/asteroid/asteroid-data-generator';
+import { 
+  generateAsteroidShape, 
+  drawAsteroidShape, 
+  drawAsteroidDetails,
+  type AsteroidShape 
+} from '@/lib/asteroid/asteroid-shape-generator';
 
 /**
  * Enhanced 2D Impact Animation with realistic physics-based particles
@@ -45,17 +55,47 @@ export function ImpactOverlay2D({
   const svgRef = useRef<SVGSVGElement>(null);
   const animationRef = useRef<number | undefined>(undefined);
   const particlesRef = useRef<Particle[]>([]);
+  const asteroidDataRef = useRef<AsteroidVisualData | null>(null);
+  const asteroidShapeRef = useRef<AsteroidShape | null>(null);
   const { isAnimating, parameters } = useMeteorStore();
 
   // Physics constants
   const GRAVITY = 9.81; // m/s²
   const AIR_RESISTANCE = 0.02;
+
+  // FIXED: Scale based on map zoom level and asteroid size
   const PIXELS_PER_METER = useMemo(() => {
-    // Scale factor: larger asteroids need more space
+    // Base scale: use map dimensions but limit maximum size
     const baseScale = Math.min(width, height) / 800;
+
+    // Energy scale: larger asteroids = larger visual representation
     const energyScale = Math.log10(results.energy.megatonsTNT + 1) / 3;
-    return baseScale * (1 + energyScale * 0.5);
-  }, [width, height, results.energy.megatonsTNT]);
+
+    // Calculate asteroid radius in pixels (limit maximum size)
+    const asteroidRadiusPixels = (parameters.diameter / 2) * baseScale * (1 + energyScale * 0.5);
+
+    // Limit maximum asteroid size to prevent map overflow
+    const maxAsteroidSize = Math.min(width, height) * 0.15; // Max 15% of map size
+    const finalAsteroidSize = Math.min(asteroidRadiusPixels, maxAsteroidSize);
+
+    // Calculate pixels per meter based on final asteroid size
+    return finalAsteroidSize / (parameters.diameter / 2);
+  }, [width, height, results.energy.megatonsTNT, parameters.diameter]);
+
+  // Generate procedural asteroid data based on NASA parameters
+  const asteroidData = useMemo(() => {
+    return generateAsteroidData(
+      parameters.diameter,
+      parameters.velocity,
+      parameters.angle,
+      parameters.density * Math.pow(parameters.diameter / 2, 3) * (4/3) * Math.PI
+    );
+  }, [parameters.diameter, parameters.velocity, parameters.angle, parameters.density]);
+
+  // Reset asteroid shape when data changes
+  useEffect(() => {
+    asteroidShapeRef.current = null;
+  }, [asteroidData]);
 
   // Calculate realistic visual properties based on physics
   const visualProps = useMemo(() => {
@@ -331,7 +371,7 @@ export function ImpactOverlay2D({
     });
   }, []);
 
-  // Draw meteor trail during entry
+  // Enhanced meteor with realistic physics and visual effects
   const drawMeteorTrail = useCallback((
     ctx: CanvasRenderingContext2D,
     centerX: number,
@@ -339,39 +379,341 @@ export function ImpactOverlay2D({
     time: number
   ) => {
     if (time > 3) return;
-    
+
     const progress = time / 3;
     const meteorY = centerY - (1 - progress) * height * 0.5;
-    const trailLength = visualProps.atmosphericEntry.trailLength * PIXELS_PER_METER;
+    const velocity = visualProps.atmosphericEntry.entryVelocity / 1000; // Convert m/s to km/s
+    const altitude = (1 - progress) * height * 0.5;
+
+    // Calculate realistic visual properties based on physics
+    const temperature = Math.min(velocity * 60, 3500); // Kelvin - increased for more dramatic effect
+    const intensity = Math.min(velocity / 15, 1.2); // Visual intensity based on speed - increased sensitivity
+    const fragmentation = Math.min(time * 1.5, 1); // Progressive fragmentation - slightly faster
+
+    // Dynamic meteor size (increases as it heats up and fragments)
+    const baseRadius = visualProps.meteorRadius;
+    const heatedRadius = baseRadius * (1 + intensity * 0.6 + fragmentation * 0.4); // More dramatic size increase
+    const plasmaRadius = heatedRadius * (1 + intensity * 2.5); // Larger plasma sheath
+
+    // Color calculation based on temperature (blackbody radiation)
+    const meteorColors = getMeteorColors(temperature, intensity);
+
+    // Draw multiple layers for realistic meteor appearance
+
+    // 1. Plasma sheath (outermost, hottest layer)
+    if (intensity > 0.3) {
+      const plasmaGradient = ctx.createRadialGradient(centerX, meteorY, 0, centerX, meteorY, plasmaRadius);
+      plasmaGradient.addColorStop(0, meteorColors.plasmaCore);
+      plasmaGradient.addColorStop(0.3, meteorColors.plasmaMid);
+      plasmaGradient.addColorStop(0.7, meteorColors.plasmaOuter);
+      plasmaGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+      ctx.fillStyle = plasmaGradient;
+      ctx.beginPath();
+      ctx.arc(centerX, meteorY, plasmaRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Plasma spikes for high-speed meteors
+      if (velocity > 30) {
+        drawPlasmaSpikes(ctx, centerX, meteorY, plasmaRadius, velocity, time);
+      }
+    }
+
+    // 2. Fragmentation layer (broken pieces)
+    if (fragmentation > 0.1) {
+      drawMeteorFragments(ctx, centerX, meteorY, heatedRadius, fragmentation, time, meteorColors);
+    }
+
+    // 3. Main meteor body with realistic texture
+    drawMeteorBody(ctx, centerX, meteorY, heatedRadius, meteorColors, intensity, time);
+
+    // 4. Ablation particles (small fragments burning up)
+    if (intensity > 0.2) {
+      drawAblationParticles(ctx, centerX, meteorY, heatedRadius, velocity, time);
+    }
+
+    // 5. Enhanced ionization trail
+    drawIonizationTrail(ctx, centerX, meteorY, heatedRadius, velocity, progress, meteorColors);
+
+    // 6. Shock wave effects for supersonic meteors
+    if (velocity > 12) { // Speed of sound in km/s
+      drawShockWaveEffects(ctx, centerX, meteorY, heatedRadius, velocity, time);
+    }
+  }, [height, visualProps]);
+
+  // Calculate realistic meteor colors based on temperature and physics
+  const getMeteorColors = useCallback((temperature: number, intensity: number) => {
+    // Blackbody radiation color approximation
+    let r, g, b;
+
+    if (temperature < 1000) {
+      // Cool meteor - dark red/brown
+      r = Math.floor(139 + (temperature / 1000) * 116); // 139 -> 255
+      g = Math.floor(69 + (temperature / 1000) * 66);   // 69 -> 135
+      b = Math.floor(19 + (temperature / 1000) * 61);   // 19 -> 80
+    } else if (temperature < 2000) {
+      // Medium heat - orange/yellow
+      const t = (temperature - 1000) / 1000;
+      r = Math.floor(255 * (0.8 + t * 0.2));
+      g = Math.floor(135 * (0.6 + t * 0.4));
+      b = Math.floor(80 * (0.3 + t * 0.7));
+    } else {
+      // Very hot - white/blue-white
+      const t = Math.min((temperature - 2000) / 1000, 1);
+      r = Math.floor(255 * (0.9 + t * 0.1));
+      g = Math.floor(255 * (0.8 + t * 0.2));
+      b = Math.floor(255 * (0.7 + t * 0.3));
+    }
+
+    // Apply intensity multiplier
+    r = Math.floor(r * (0.5 + intensity * 0.5));
+    g = Math.floor(g * (0.5 + intensity * 0.5));
+    b = Math.floor(b * (0.5 + intensity * 0.5));
+
+    const toHex = (c: number) => c.toString(16).padStart(2, '0');
+    const baseColor = `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+
+    return {
+      body: baseColor,
+      bright: `#${toHex(Math.min(255, r + 50))}${toHex(Math.min(255, g + 50))}${toHex(Math.min(255, b + 50))}`,
+      dark: `#${toHex(Math.floor(r * 0.7))}${toHex(Math.floor(g * 0.7))}${toHex(Math.floor(b * 0.7))}`,
+      plasmaCore: `rgba(255, 255, ${Math.floor(220 + intensity * 35)}, ${0.95 + intensity * 0.05})`,
+      plasmaMid: `rgba(255, ${Math.floor(180 + intensity * 75)}, ${Math.floor(120 + intensity * 135)}, ${0.8 + intensity * 0.2})`,
+      plasmaOuter: `rgba(255, ${Math.floor(120 + intensity * 135)}, ${Math.floor(180 + intensity * 75)}, ${0.5 + intensity * 0.5})`,
+      trail: `rgba(${r}, ${g}, ${b}, ${0.8 * intensity})`
+    };
+  }, []);
+
+  // Draw plasma spikes for high-speed meteors
+  const drawPlasmaSpikes = useCallback((
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    radius: number,
+    velocity: number,
+    time: number
+  ) => {
+    const spikeCount = Math.floor(velocity / 10) + 3;
+    const spikeLength = radius * (0.5 + velocity / 50);
+
+    ctx.save();
+    for (let i = 0; i < spikeCount; i++) {
+      const angle = (i / spikeCount) * Math.PI * 2 + time * 2;
+      const spikeX = x + Math.cos(angle) * (radius + spikeLength);
+      const spikeY = y + Math.sin(angle) * (radius + spikeLength);
+
+      // Create gradient for each spike
+      const spikeGradient = ctx.createLinearGradient(x, y, spikeX, spikeY);
+      spikeGradient.addColorStop(0, `rgba(255, 255, 255, ${0.8})`);
+      spikeGradient.addColorStop(0.5, `rgba(255, 200, 100, ${0.6})`);
+      spikeGradient.addColorStop(1, `rgba(255, 150, 50, ${0.2})`);
+
+      ctx.strokeStyle = spikeGradient;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(spikeX, spikeY);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }, []);
+
+  // Draw meteor fragments
+  const drawMeteorFragments = useCallback((
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    radius: number,
+    fragmentation: number,
+    time: number,
+    colors: any
+  ) => {
+    const fragmentCount = Math.floor(fragmentation * 8) + 2;
+
+    for (let i = 0; i < fragmentCount; i++) {
+      const fragmentAngle = (i / fragmentCount) * Math.PI * 2 + time * 0.5;
+      const fragmentDistance = radius * (0.3 + fragmentation * 0.7);
+      const fragmentX = x + Math.cos(fragmentAngle) * fragmentDistance;
+      const fragmentY = y + Math.sin(fragmentAngle) * fragmentDistance;
+      const fragmentSize = radius * (0.1 + fragmentation * 0.15) * (1 - i * 0.1);
+
+      // Fragment trail
+      const trailLength = fragmentSize * 3;
+      const trailGradient = ctx.createLinearGradient(
+        fragmentX - Math.cos(fragmentAngle) * trailLength,
+        fragmentY - Math.sin(fragmentAngle) * trailLength,
+        fragmentX,
+        fragmentY
+      );
+      trailGradient.addColorStop(0, 'rgba(255, 100, 50, 0)');
+      trailGradient.addColorStop(1, colors.bright);
+
+      ctx.strokeStyle = trailGradient;
+      ctx.lineWidth = fragmentSize;
+      ctx.beginPath();
+      ctx.moveTo(fragmentX - Math.cos(fragmentAngle) * trailLength, fragmentY - Math.sin(fragmentAngle) * trailLength);
+      ctx.lineTo(fragmentX, fragmentY);
+      ctx.stroke();
+
+      // Fragment body
+      const fragmentGradient = ctx.createRadialGradient(fragmentX, fragmentY, 0, fragmentX, fragmentY, fragmentSize);
+      fragmentGradient.addColorStop(0, colors.bright);
+      fragmentGradient.addColorStop(0.7, colors.body);
+      fragmentGradient.addColorStop(1, colors.dark);
+
+      ctx.fillStyle = fragmentGradient;
+      ctx.beginPath();
+      ctx.arc(fragmentX, fragmentY, fragmentSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }, []);
+
+  // Draw main meteor body with PROCEDURAL texture based on NASA data
+  const drawMeteorBody = useCallback((
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    radius: number,
+    colors: any,
+    intensity: number,
+    time: number
+  ) => {
+    // Generate or retrieve cached asteroid shape
+    if (!asteroidShapeRef.current) {
+      asteroidShapeRef.current = generateAsteroidShape(asteroidData, radius);
+    }
+
+    const rotation = time * 2;
     
-    // Draw meteor
-    const gradient = ctx.createRadialGradient(centerX, meteorY, 0, centerX, meteorY, visualProps.meteorRadius * 2);
-    gradient.addColorStop(0, '#FFFFFF');
-    gradient.addColorStop(0.5, '#FFD700');
-    gradient.addColorStop(1, '#FF8C00');
-    
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(centerX, meteorY, visualProps.meteorRadius, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Draw trail
-    const trailGradient = ctx.createLinearGradient(
-      centerX, meteorY - trailLength,
-      centerX, meteorY
+    // Draw the procedural asteroid shape with its unique characteristics
+    drawAsteroidShape(
+      ctx,
+      asteroidShapeRef.current,
+      x,
+      y,
+      asteroidData,
+      rotation
     );
-    trailGradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
-    trailGradient.addColorStop(0.3, `rgba(255, 215, 0, ${0.6 * (1 - progress)})`);
-    trailGradient.addColorStop(0.7, `rgba(255, 140, 0, ${0.8 * (1 - progress)})`);
-    trailGradient.addColorStop(1, `rgba(255, 69, 0, ${(1 - progress)})`);
     
-    ctx.strokeStyle = trailGradient;
-    ctx.lineWidth = visualProps.meteorRadius * 2;
-    ctx.beginPath();
-    ctx.moveTo(centerX, meteorY - trailLength);
-    ctx.lineTo(centerX, meteorY);
-    ctx.stroke();
-  }, [height, visualProps, PIXELS_PER_METER]);
+    // Draw surface details (craters, texture based on composition)
+    drawAsteroidDetails(
+      ctx,
+      asteroidShapeRef.current,
+      x,
+      y,
+      asteroidData,
+      rotation
+    );
+  }, [asteroidData]);
+
+  // Draw ablation particles
+  const drawAblationParticles = useCallback((
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    radius: number,
+    velocity: number,
+    time: number
+  ) => {
+    const particleCount = Math.floor(velocity / 5) + 3;
+
+    for (let i = 0; i < particleCount; i++) {
+      const particleAngle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI / 3; // Spread behind meteor
+      const particleDistance = radius * (1.5 + Math.random() * 2);
+      const particleX = x + Math.cos(particleAngle) * particleDistance;
+      const particleY = y + Math.sin(particleAngle) * particleDistance;
+      const particleSize = Math.random() * 2 + 1;
+
+      // Particle trail
+      const trailLength = particleSize * 5;
+      const trailGradient = ctx.createLinearGradient(
+        particleX - Math.cos(particleAngle) * trailLength,
+        particleY - Math.sin(particleAngle) * trailLength,
+        particleX,
+        particleY
+      );
+      trailGradient.addColorStop(0, 'rgba(255, 100, 50, 0)');
+      trailGradient.addColorStop(1, 'rgba(255, 200, 100, 0.8)');
+
+      ctx.strokeStyle = trailGradient;
+      ctx.lineWidth = particleSize;
+      ctx.beginPath();
+      ctx.moveTo(particleX - Math.cos(particleAngle) * trailLength, particleY - Math.sin(particleAngle) * trailLength);
+      ctx.lineTo(particleX, particleY);
+      ctx.stroke();
+
+      // Particle
+      ctx.fillStyle = 'rgba(255, 150, 50, 0.9)';
+      ctx.beginPath();
+      ctx.arc(particleX, particleY, particleSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }, []);
+
+  // Enhanced ionization trail
+  const drawIonizationTrail = useCallback((
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    radius: number,
+    velocity: number,
+    progress: number,
+    colors: any
+  ) => {
+    const trailLength = radius * (10 + velocity * 2) * (1 - progress * 0.3);
+
+    // Multiple trail segments for depth
+    for (let segment = 0; segment < 5; segment++) {
+      const segmentProgress = segment / 5;
+      const segmentY = y + segmentProgress * trailLength;
+      const segmentIntensity = (1 - segmentProgress) * (1 - progress * 0.5);
+
+      if (segmentIntensity > 0.1) {
+        const segmentGradient = ctx.createRadialGradient(x, segmentY, 0, x, segmentY, radius * (2 - segmentProgress));
+        segmentGradient.addColorStop(0, `rgba(255, 255, 255, ${segmentIntensity})`);
+        segmentGradient.addColorStop(0.3, `rgba(255, 200, 100, ${segmentIntensity * 0.8})`);
+        segmentGradient.addColorStop(0.7, `rgba(255, 150, 50, ${segmentIntensity * 0.4})`);
+        segmentGradient.addColorStop(1, 'rgba(255, 100, 50, 0)');
+
+        ctx.fillStyle = segmentGradient;
+        ctx.beginPath();
+        ctx.arc(x, segmentY, radius * (2 - segmentProgress), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }, []);
+
+  // Shock wave effects for supersonic meteors
+  const drawShockWaveEffects = useCallback((
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    radius: number,
+    velocity: number,
+    time: number
+  ) => {
+    const shockRadius = radius * (3 + velocity / 10);
+    const shockIntensity = Math.min(velocity / 20, 1);
+
+    // Multiple concentric shock waves
+    for (let wave = 0; wave < 3; wave++) {
+      const waveRadius = shockRadius * (0.8 + wave * 0.2);
+      const waveIntensity = shockIntensity * (1 - wave * 0.3) * (1 - time * 0.1);
+
+      if (waveIntensity > 0.1) {
+        ctx.strokeStyle = `rgba(255, 255, 255, ${waveIntensity * 0.6})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, waveRadius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner glow
+        ctx.strokeStyle = `rgba(255, 200, 100, ${waveIntensity * 0.3})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+  }, []);
 
   // Draw fireball with proper temperature colors
   const drawFireball = useCallback((
