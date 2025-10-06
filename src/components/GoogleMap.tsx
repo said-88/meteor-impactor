@@ -15,14 +15,15 @@ export function GoogleMap() {
   const overlayRef = useRef<google.maps.OverlayView | null>(null);
   const [markerPositions, setMarkerPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
 
-  const { 
-    impactLocation, 
-    impactResults, 
-    isAnimating, 
+  const {
+    impactLocation,
+    impactResults,
+    isAnimating,
     setImpactLocation,
     impactSites,
     activeImpactId,
     clearImpact,
+    isLocked,
   } = useMeteorStore();
 
   console.log("🗺️ GoogleMap component rendering");
@@ -133,6 +134,12 @@ export function GoogleMap() {
 
   const handleMapClick = useCallback(
     (event: any) => {
+      // Prevent map interactions when interface is locked
+      if (isLocked) {
+        console.log("🛑 Map click blocked - interface locked");
+        return;
+      }
+
       console.log("🖱️ Map clicked:", event);
       if (event.detail?.latLng) {
         const newLocation = {
@@ -143,7 +150,7 @@ export function GoogleMap() {
         setImpactLocation(newLocation);
       }
     },
-    [setImpactLocation],
+    [setImpactLocation, isLocked],
   );
 
   const handleMarkerDragEnd = useCallback(
@@ -208,7 +215,7 @@ export function GoogleMap() {
           {!isAnimating && (
             <AdvancedMarker
               position={impactLocation}
-              draggable={true}
+              draggable={!isLocked}
               onDragEnd={handleMarkerDragEnd}
             >
               <div className="relative animate-pulse">

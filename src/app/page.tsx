@@ -10,7 +10,7 @@ import { useState } from "react";
 
 export default function Home() {
   // Use Zustand store for global state management
-  const { showResults, impactResults, toggleResultsPanel, isAnimating } = useMeteorStore();
+  const { showResults, impactResults, toggleResultsPanel, isAnimating, isLocked } = useMeteorStore();
   const [showControls, setShowControls] = useState(false);
 
   return (
@@ -106,6 +106,16 @@ export default function Home() {
               }
             }}
           />
+        )}
+
+        {/* Interface Lock Indicator - Shows during asteroid launch */}
+        {isLocked && (
+          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
+            <div className="bg-black/80 text-white px-4 py-2 rounded-lg text-center border border-orange-500/30 flex items-center gap-2">
+              <div className="animate-spin w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full"></div>
+              <span className="text-sm text-orange-400 font-medium">🚀 Launching...</span>
+            </div>
+          </div>
         )}
       </main>
 
