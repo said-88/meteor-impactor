@@ -10,8 +10,8 @@
   --popover: 280 100% 18%;
   --popover-foreground: 210 50% 98%;
 
-  /* Nuevo color principal: púrpura oscuro saturado */
-  --primary: 280 100% 22%; /* #4b006e */
+  /* Nuevo color principal: rojo profesional */
+  --primary: 280 100% 22%; /* #c41e3a */
   --primary-foreground: 210 50% 98%;
   --secondary: 220 20% 15%; /* Darker secondary for depth */
   --secondary-foreground: 210 50% 98%;
@@ -31,7 +31,7 @@
   /* High-Visibility Borders */
   --border: 220 20% 20%;
   --input: 220 15% 12%;
-  --ring: 220 100% 45%; /* Professional blue ring */
+  --ring: 220 100% 45%; /* Professional red ring */
 
   /* Layout */
   --radius: 0.5rem;
@@ -110,20 +110,20 @@ body {
 .glass-panel {
   background: rgba(15, 20, 35, 0.98);
   backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(30, 64, 175, 0.6);
+  border: 1px solid rgba(196, 30, 58, 0.6);
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 rgba(30, 64, 175, 0.25);
+    inset 0 1px 0 rgba(196, 30, 58, 0.25);
 }
 
 /* Enhanced Glass Panel - Better Contrast */
 .glass-panel-enhanced {
   background: rgba(12, 15, 28, 0.95);
   backdrop-filter: blur(32px) saturate(200%);
-  border: 1px solid rgba(40, 80, 200, 0.7);
+  border: 1px solid rgba(196, 30, 58, 0.7);
   box-shadow:
     0 16px 48px rgba(0, 0, 0, 0.8),
-    inset 0 1px 0 rgba(40, 80, 200, 0.3);
+    inset 0 1px 0 rgba(196, 30, 58, 0.3);
 }
 
 .strategic-panel {
@@ -133,7 +133,7 @@ body {
   border: 1px solid hsl(var(--border));
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.3),
-    0 1px 0 rgba(30, 64, 175, 0.08);
+    0 1px 0 rgba(196, 30, 58, 0.08);
 }
 
 .overlay-slide {
@@ -203,27 +203,24 @@ body {
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
 }
 
-/* Botones: gradiente y borde con azul marino profesional */
+/* Professional buttons with slate theme - More opaque */
 .control-button {
-  background: linear-gradient(135deg,
-    hsl(var(--primary)) 0%,
-    hsl(var(--primary) / 0.85) 100%);
-  border: 1px solid hsl(var(--primary));
+  background: rgb(51 65 85); /* slate-700 */
+  border: 1px solid rgb(71 85 105); /* slate-600 */
   transition: all 0.2s ease;
-  box-shadow: 0 3px 12px rgba(75, 0, 110, 0.4); /* #4b006e */
+  box-shadow: 0 3px 12px rgba(51, 65, 85, 0.4);
 }
 
 .control-button:hover {
-  background: linear-gradient(135deg,
-    hsl(var(--primary) / 0.9) 0%,
-    hsl(var(--primary) / 0.75) 100%);
-  box-shadow: 0 5px 20px rgba(75, 0, 110, 0.5);
+  background: rgb(100 116 139); /* slate-500 */
+  border: 1px solid rgb(100 116 139);
+  box-shadow: 0 5px 20px rgba(100, 116, 139, 0.5);
   transform: translateY(-1px);
 }
 
 .control-button:active {
   transform: translateY(0);
-  box-shadow: 0 3px 12px rgba(75, 0, 110, 0.4);
+  box-shadow: 0 3px 12px rgba(51, 65, 85, 0.4);
 }
 
 /* Professional Threat Level Indicators - Maximum Visibility */
@@ -267,7 +264,7 @@ body {
 .map-info {
   background: rgba(15, 20, 35, 0.98);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(30, 64, 175, 0.6);
+  border: 1px solid rgba(196, 30, 58, 0.6);
 }
 
 /* Responsive Design */

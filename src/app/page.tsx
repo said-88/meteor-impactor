@@ -4,7 +4,7 @@ import { ControlPanel } from "@/components/ControlPanel";
 import { GoogleMap } from "@/components/GoogleMap";
 import { ResultsPanel } from "@/components/ResultsPanel";
 import { useMeteorStore } from "@/lib/store/meteorStore";
-import { Settings, Menu, X, Activity } from "lucide-react";
+import { Settings, Menu, Activity } from "lucide-react";
 import { useState } from "react";
 
 export default function Home() {
@@ -25,11 +25,11 @@ export default function Home() {
               {/* Title */}
               <div>
                 <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                  <Activity className="w-6 h-6 text-primary" />
-                  METEOR IMPACT SIMULATOR
+                  <Activity className="w-6 h-6 text-orange-400" />
+                  METEOR IMPACT
                 </h1>
                 <p className="text-muted-foreground text-sm">
-                  Strategic Impact Analysis • Real-time Physics Simulation
+                  Strategic Impact Analysis • Real-time Physics Calculations
                 </p>
               </div>
             </div>
@@ -43,10 +43,10 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Settings Toggle */}
+              {/* Settings Toggle - Top Right Corner */}
               <button
                 onClick={() => setShowSettings(!showSettings)}
-                className="control-button p-2 rounded-lg"
+                className="fixed top-4 right-4 z-50 p-3 rounded-lg shadow-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 hover:text-white transition-all duration-200"
                 title="Settings"
               >
                 <Settings className="w-5 h-5" />
@@ -119,7 +119,7 @@ export default function Home() {
       <footer className="absolute bottom-0 left-0 right-0 z-10 glass-panel-enhanced mx-4 mb-2 p-2">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-4">
-            <span>© 2025 Meteor Impact Simulator</span>
+            <span>© 2025 Meteor Impact</span>
             <span>•</span>
             <span>Strategic Analysis Platform</span>
           </div>

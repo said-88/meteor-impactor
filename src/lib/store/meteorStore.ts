@@ -115,7 +115,7 @@ export const useMeteorStore = create<MeteorState>()(
       impactLocation: defaultLocation,
       impactSites: [],
       activeImpactId: null,
-      showResults: true,
+      showResults: false,
       isAnimating: false,
       showInfo: null,
       isLaunching: false,

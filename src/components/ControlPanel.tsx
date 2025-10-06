@@ -66,7 +66,7 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-              <Activity className="w-5 h-5 text-primary" />
+              <Activity className="w-5 h-5 text-orange-400" />
               METEOR PARAMETERS
             </h2>
             <div className="flex items-center gap-2">
@@ -323,10 +323,10 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
           <div className="space-y-3">
             <Card className="border-primary bg-[hsl(var(--card))]">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg text-primary flex items-center gap-2">
+                <CardTitle className="text-lg text-orange-400 flex items-center gap-2">
                   🚨 Most Dangerous PHAs
                 </CardTitle>
-                <p className="text-sm text-primary">
+                <p className="text-sm text-orange-300">
                   Real asteroids that could threaten Earth (NASA Sentry data)
                 </p>
               </CardHeader>
