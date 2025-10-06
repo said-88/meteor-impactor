@@ -1,4 +1,5 @@
 import type { NASA_Asteroid } from "@/types/asteroid";
+import { UserFriendlyDataConverter } from "./nasa/data-converter";
 
 const API_BASE = "/api/nasa"; // Use our Next.js API route instead of NASA directly
 
@@ -140,40 +141,24 @@ export class NASAAPIService {
   }
 
   /**
-   * Convert NASA asteroid data to our internal format
+   * Convert NASA asteroid data to our internal format using user-friendly converter
    */
   static convertToInternalFormat(nasaAsteroid: NASALookupResponse): NASA_Asteroid {
-    const diameter = nasaAsteroid.estimated_diameter.meters;
-    const closeApproach = nasaAsteroid.close_approach_data[0]; // Use closest approach
-
-    return {
-      id: nasaAsteroid.id,
-      name: nasaAsteroid.name.replace(/[()]/g, "").trim(), // Remove parentheses
-      estimatedDiameter: {
-        min: diameter.estimated_diameter_min,
-        max: diameter.estimated_diameter_max,
-      },
-      closeApproachData: {
-        date: closeApproach.close_approach_date,
-        velocity: parseFloat(closeApproach.relative_velocity.kilometers_per_second),
-        missDistance: parseFloat(closeApproach.miss_distance.kilometers),
-      },
-      isPotentiallyHazardous: nasaAsteroid.is_potentially_hazardous_asteroid,
-    };
+    return UserFriendlyDataConverter.convertNASAAsteroid(nasaAsteroid);
   }
 
   /**
-   * Get famous asteroids using verified working NASA SPK-IDs
+   * Get famous asteroids using verified working NASA asteroid IDs
    * Falls back to recent close approaches if famous asteroids fail
    */
   static async getFamousAsteroids(): Promise<NASA_Asteroid[]> {
-    // Using asteroid SPK-IDs that are known to work with NASA API
-    // Note: These are verified working SPK-IDs
+    // Using asteroid IDs that are known to work with NASA NEO API
+    // These are verified NEO reference IDs from NASA database
     const famousAsteroidIds = [
-      "3542519", // Known working asteroid from NASA docs
-      "2001 CB21", // Another known asteroid
-      "2010 TK7", // Earth trojan asteroid
-      "3753", // Cruithne - Earth's companion asteroid
+      "2163294", // 433 Eros - well known near-Earth asteroid
+      "2001580", // 25143 Itokawa - visited by Hayabusa spacecraft
+      "2025148", // 101955 Bennu - OSIRIS-REx target
+      "2001221", // 162173 Ryugu - Hayabusa2 target
     ];
 
     const asteroids: NASA_Asteroid[] = [];
@@ -187,7 +172,23 @@ export class NASAAPIService {
         console.log(`✅ Successfully loaded ${asteroid.name} (${asteroid.estimatedDiameter.min.toFixed(1)}-${asteroid.estimatedDiameter.max.toFixed(1)}m, ${asteroid.closeApproachData.velocity.toFixed(2)} km/s)`);
       } catch (error) {
         console.warn(`❌ Failed to fetch asteroid ${id}:`, error);
-        // Continue with other asteroids even if one fails
+        // Try alternative famous asteroid IDs if the primary ones fail
+        if (id === "2163294") {
+          console.log("🔄 Trying alternative asteroid IDs...");
+          const alternativeIds = ["2000433", "20025143", "2001019"];
+          for (const altId of alternativeIds) {
+            try {
+              console.log(`🌌 Trying alternative asteroid ${altId}...`);
+              const altData = await this.getAsteroidById(altId);
+              const altAsteroid = this.convertToInternalFormat(altData);
+              asteroids.push(altAsteroid);
+              console.log(`✅ Successfully loaded alternative ${altAsteroid.name}`);
+              break; // Success, break out of alternatives
+            } catch (altError) {
+              console.warn(`❌ Alternative asteroid ${altId} also failed:`, altError);
+            }
+          }
+        }
       }
     }
 

@@ -36,7 +36,7 @@ export function ResultsPanel() {
   );
 
   return (
-    <div className="glass-panel h-full flex flex-col">
+    <div className="glass-panel-enhanced h-full flex flex-col">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
@@ -147,7 +147,7 @@ export function ResultsPanel() {
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Wind className="w-3 h-3 text-blue-500" />
+                <Wind className="w-3 h-3 text-slate-300" />
                 <span className="text-muted-foreground">Airblast Radius</span>
               </div>
               <span className="font-mono">
@@ -196,7 +196,7 @@ export function ResultsPanel() {
         {/* Historical Comparison */}
         <div className="pt-2 border-t">
           <div className="flex items-center gap-2 mb-2">
-            <Info className="w-4 h-4 text-blue-500" />
+            <Info className="w-4 h-4 text-slate-300" />
             <span className="text-sm font-medium">Historical Comparison</span>
           </div>
           <p className="text-xs text-muted-foreground">

@@ -53,10 +53,50 @@ export interface NASA_Asteroid {
   designation?: string;
   nasa_jpl_url?: string;
   absolute_magnitude_h?: number;
+
+  // Enhanced size information with user-friendly categorization
   estimatedDiameter: {
     min: number;
     max: number;
   };
+  sizeCategory: 'small' | 'medium' | 'large' | 'huge';
+  sizeComparison: string; // e.g., "Size of a school bus"
+
+  // Enhanced threat assessment with simple explanations
+  threatLevel: {
+    rating: 'safe' | 'low' | 'medium' | 'high' | 'extreme';
+    description: string; // e.g., "No threat for centuries"
+    palermoScale?: number;
+    torinoScale?: number;
+  };
+
+  // User-friendly orbital information
+  orbit: {
+    earthCrossings: number; // Times it crosses Earth's orbit per year
+    nextApproach: {
+      date: string;
+      distance: { value: number; unit: 'LD' | 'km' | 'AU' };
+      description: string; // "Very close approach" or "Distant but notable"
+    };
+    orbitalPeriod: { value: number; unit: 'years' };
+  };
+
+  // Discovery information for user engagement
+  discovery: {
+    year: number;
+    discoverer: string;
+    method: 'ground-telescope' | 'space-telescope' | 'radar' | 'spacecraft';
+    funFact: string;
+  };
+
+  // Composition affecting impact physics
+  composition: {
+    type: 'stony' | 'iron' | 'stony-iron' | 'carbonaceous' | 'unknown';
+    density: number;
+    strength: 'fragile' | 'moderate' | 'strong';
+  };
+
+  // Legacy fields for backward compatibility
   closeApproachData: {
     date: string;
     velocity: number; // km/s

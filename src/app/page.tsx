@@ -22,15 +22,6 @@ export default function Home() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              {/* Menu Toggle */}
-              <button
-                onClick={() => setShowControls(!showControls)}
-                className="control-button p-2 rounded-lg"
-                title="Toggle Control Panel"
-              >
-                {showControls ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
-
               {/* Title */}
               <div>
                 <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
@@ -125,7 +116,7 @@ export default function Home() {
       </main>
 
       {/* Strategic Footer */}
-      <footer className="absolute bottom-0 left-0 right-0 z-10 glass-panel mx-4 mb-2 p-2">
+      <footer className="absolute bottom-0 left-0 right-0 z-10 glass-panel-enhanced mx-4 mb-2 p-2">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-4">
             <span>© 2025 Meteor Impact Simulator</span>

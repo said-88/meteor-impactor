@@ -1,45 +1,49 @@
 @import "tailwindcss";
 
-/* Strategic Dark Theme - Inspired by Plague Inc & neal.fun */
+/* Professional Dark Theme - Maximum Readability & Contrast */
 :root {
-  /* Base Colors */
-  --background: 220 30% 8%; /* Very dark blue-gray */
-  --foreground: 210 40% 98%;
-  --card: 220 25% 12%; /* Darker card background */
-  --card-foreground: 210 40% 98%;
-  --popover: 220 25% 12%;
-  --popover-foreground: 210 40% 98%;
+  /* Base Colors - Professional dark theme */
+  --background: 220 40% 8%; /* Azul marino profundo, alto contraste */
+  --foreground: 210 50% 98%; /* Bright white text for perfect readability */
+  --card: 280 100% 18%; /* Púrpura oscuro saturado */
+  --card-foreground: 210 50% 98%;
+  --popover: 280 100% 18%;
+  --popover-foreground: 210 50% 98%;
 
-  /* Strategic Blue Theme */
-  --primary: 217 91% 60%; /* Bright strategic blue */
-  --primary-foreground: 220 30% 8%;
-  --secondary: 220 20% 18%; /* Darker secondary */
-  --secondary-foreground: 210 40% 98%;
-  --muted: 220 15% 15%; /* Very dark muted */
-  --muted-foreground: 215 20% 65%;
-  --accent: 220 25% 20%; /* Strategic accent */
-  --accent-foreground: 210 40% 98%;
+  /* Nuevo color principal: púrpura oscuro saturado */
+  --primary: 280 100% 22%; /* #4b006e */
+  --primary-foreground: 210 50% 98%;
+  --secondary: 220 20% 15%; /* Darker secondary for depth */
+  --secondary-foreground: 210 50% 98%;
+  --muted: 220 15% 12%; /* Professional muted */
+  --muted-foreground: 215 30% 75%; /* Clear muted text */
+  --accent: 220 25% 18%; /* Subtle accent */
+  --accent-foreground: 210 50% 98%;
 
-  /* Impact Colors */
-  --destructive: 0 75% 55%; /* Bright red for danger */
-  --destructive-foreground: 210 40% 98%;
-  --warning: 35 100% 60%; /* Orange for warnings */
-  --warning-foreground: 220 30% 8%;
-  --success: 142 76% 45%; /* Green for safe */
-  --success-foreground: 210 40% 98%;
+  /* High-Contrast Threat System */
+  --destructive: 0 90% 65%; /* Intense red for danger */
+  --destructive-foreground: 210 50% 98%;
+  --warning: 35 95% 60%; /* Bright amber for warnings */
+  --warning-foreground: 220 30% 6%;
+  --success: 142 85% 55%; /* Strong green for safe */
+  --success-foreground: 220 30% 6%;
 
-  /* Strategic Borders */
+  /* High-Visibility Borders */
   --border: 220 20% 20%;
-  --input: 220 15% 15%;
-  --ring: 217 91% 60%; /* Primary blue ring */
+  --input: 220 15% 12%;
+  --ring: 220 100% 45%; /* Professional blue ring */
 
   /* Layout */
   --radius: 0.5rem;
 
-  /* Overlay Effects */
-  --overlay-bg: 220 30% 8%;
-  --overlay-border: 220 25% 20%;
-  --glass-bg: 220 25% 15%;
+  /* Professional Overlay Effects */
+  --overlay-bg: 220 30% 6%;
+  --overlay-border: 220 25% 18%;
+  --glass-bg: 220 25% 12%;
+
+  /* Enhanced Glass Effects - Better Readability */
+  --glass-bg-enhanced: 220 25% 8%;
+  --glass-border-enhanced: 220 30% 25%;
 }
 
 @theme inline {
@@ -102,14 +106,24 @@ body {
   overflow-x: hidden;
 }
 
-/* Strategic Overlay Effects */
+/* Professional Glass Effects - Enhanced Readability */
 .glass-panel {
-  background: rgba(20, 30, 48, 0.9);
-  backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(15, 20, 35, 0.98);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(30, 64, 175, 0.6);
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(59, 130, 246, 0.1);
+    0 12px 40px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(30, 64, 175, 0.25);
+}
+
+/* Enhanced Glass Panel - Better Contrast */
+.glass-panel-enhanced {
+  background: rgba(12, 15, 28, 0.95);
+  backdrop-filter: blur(32px) saturate(200%);
+  border: 1px solid rgba(40, 80, 200, 0.7);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 rgba(40, 80, 200, 0.3);
 }
 
 .strategic-panel {
@@ -119,7 +133,7 @@ body {
   border: 1px solid hsl(var(--border));
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.3),
-    0 1px 0 rgba(59, 130, 246, 0.05);
+    0 1px 0 rgba(30, 64, 175, 0.08);
 }
 
 .overlay-slide {
@@ -162,14 +176,14 @@ body {
 }
 
 .impact-pressure {
-  fill: #3b82f6;
-  stroke: #1d4ed8;
+  fill: #1e40af;
+  stroke: #1e3a8a;
   stroke-width: 1;
 }
 
 .impact-shockwave {
-  fill: #60a5fa;
-  stroke: #3b82f6;
+  fill: #1d4ed8;
+  stroke: #1e40af;
   stroke-width: 1;
 }
 
@@ -179,61 +193,68 @@ body {
   stroke-width: 1;
 }
 
-/* Strategic UI Elements */
+/* Enhanced Strategic UI Elements */
 .strategic-header {
   background: linear-gradient(90deg,
     hsl(var(--card)) 0%,
     hsl(var(--secondary)) 50%,
     hsl(var(--card)) 100%);
   border-bottom: 2px solid hsl(var(--primary));
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
 }
 
+/* Botones: gradiente y borde con azul marino profesional */
 .control-button {
   background: linear-gradient(135deg,
     hsl(var(--primary)) 0%,
-    hsl(var(--primary) / 0.8) 100%);
+    hsl(var(--primary) / 0.85) 100%);
   border: 1px solid hsl(var(--primary));
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 3px 12px rgba(75, 0, 110, 0.4); /* #4b006e */
 }
 
 .control-button:hover {
   background: linear-gradient(135deg,
     hsl(var(--primary) / 0.9) 0%,
-    hsl(var(--primary) / 0.7) 100%);
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+    hsl(var(--primary) / 0.75) 100%);
+  box-shadow: 0 5px 20px rgba(75, 0, 110, 0.5);
   transform: translateY(-1px);
 }
 
 .control-button:active {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 3px 12px rgba(75, 0, 110, 0.4);
 }
 
-/* Threat Level Indicators */
+/* Professional Threat Level Indicators - Maximum Visibility */
+.threat-safe {
+  color: #22c55e; /* Bright green */
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.5);
+}
+
 .threat-low {
-  color: hsl(var(--success));
-  background: rgba(74, 222, 128, 0.1);
-  border: 1px solid rgba(74, 222, 128, 0.3);
+  color: #10b981; /* Emerald green */
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.5);
 }
 
 .threat-medium {
-  color: hsl(var(--warning));
-  background: rgba(251, 191, 36, 0.1);
-  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: #f59e0b; /* Amber yellow */
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.5);
 }
 
 .threat-high {
-  color: hsl(var(--destructive));
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f97316; /* Bright orange */
+  background: rgba(249, 115, 22, 0.2);
+  border: 1px solid rgba(249, 115, 22, 0.5);
 }
 
 .threat-extreme {
-  color: #ff0080;
-  background: rgba(255, 0, 128, 0.1);
-  border: 1px solid rgba(255, 0, 128, 0.3);
+  color: #ef4444; /* Intense red */
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
   animation: pulse-threat 2s infinite;
 }
 
@@ -242,11 +263,11 @@ body {
   50% { opacity: 0.7; }
 }
 
-/* Map Overlay Info */
+/* Professional Map Overlay Info */
 .map-info {
-  background: rgba(20, 30, 48, 0.95);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(59, 130, 246, 0.4);
+  background: rgba(15, 20, 35, 0.98);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(30, 64, 175, 0.6);
 }
 
 /* Responsive Design */

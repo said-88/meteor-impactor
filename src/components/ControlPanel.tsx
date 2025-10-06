@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ImpactCalculator } from "@/lib/physics/impactCalculator";
 import { useMeteorStore } from "@/lib/store/meteorStore";
 
@@ -32,6 +33,12 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
     loadNASAasteroids,
     load2025CloseApproaches,
     selectNASAsteroid,
+    dangerousPHAs,
+    selectedDangerousPHAId,
+    isLoadingDangerous,
+    dangerousPHAError,
+    loadDangerousPHAs,
+    selectDangerousPHA,
     launchAsteroid,
     clearAllImpacts,
     impactSites,
@@ -55,7 +62,7 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
   }
   return (
     <TooltipProvider>
-      <div className="glass-panel h-full flex flex-col">
+      <div className="glass-panel-enhanced h-full flex flex-col">
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
@@ -91,7 +98,7 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
             <Button
               onClick={launchAsteroid}
               disabled={isAnimating || isLaunching}
-              className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-bold py-3 text-base"
+              className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold py-3 text-base shadow-lg hover:shadow-xl transition-all"
             >
               <Rocket className="w-5 h-5 mr-2" />
               {isLaunching ? "LAUNCHING..." : "LAUNCH ASTEROID"}
@@ -312,9 +319,106 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
             </div>
           </div>
 
-          {/* NASA Asteroids */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">NASA Asteroids</Label>
+          {/* 🚨 DANGEROUS PHAs Section - Most Important */}
+          <div className="space-y-3">
+            <Card className="border-primary bg-[hsl(var(--card))]">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg text-primary flex items-center gap-2">
+                  🚨 Most Dangerous PHAs
+                </CardTitle>
+                <p className="text-sm text-primary">
+                  Real asteroids that could threaten Earth (NASA Sentry data)
+                </p>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full border-primary text-primary hover:bg-primary/10 hover:text-primary bg-primary/5"
+                  onClick={loadDangerousPHAs}
+                  disabled={isLoadingDangerous}
+                >
+                  {isLoadingDangerous ? (
+                    <>
+                      <div className="animate-spin w-3 h-3 border border-primary border-t-transparent rounded-full mr-2"></div>
+                      <span className="text-primary">Loading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4 mr-2 text-primary" />
+                      <span className="text-primary font-semibold">Load Dangerous PHAs</span>
+                    </>
+                  )}
+                </Button>
+
+                {/* Display loaded dangerous PHAs - Simple List */}
+                {dangerousPHAs.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                  <p className="text-sm font-medium text-destructive-foreground">
+                    {dangerousPHAs.length} dangerous asteroid{dangerousPHAs.length > 1 ? 's' : ''} loaded:
+                  </p>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {dangerousPHAs.slice(0, 8).map((pha) => (
+                    <div
+                      key={pha.id}
+                      className={`p-3 rounded-lg cursor-pointer transition-all border ${
+                      selectedDangerousPHAId === pha.id
+                        ? 'bg-destructive/10 border-destructive/30 ring-2 ring-destructive/50 text-white'
+                        : 'bg-destructive/5 border-destructive/20 hover:bg-destructive/10 text-white'
+                      }`}
+                      onClick={() => selectDangerousPHA(pha.id)}
+                    >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-sm">{pha.name}</span>
+                                <span className="text-sm">
+                                  {pha.sizeCategory === 'small' ? '🏐' :
+                                   pha.sizeCategory === 'medium' ? '🏠' :
+                                   pha.sizeCategory === 'large' ? '🏟️' : '🏙️'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">{pha.threatLevel.description}</p>
+                            </div>
+                            <Badge
+                              className={`text-xs ${
+                                pha.threatLevel.rating === 'extreme' ? 'bg-destructive text-destructive-foreground' :
+                                pha.threatLevel.rating === 'high' ? 'bg-orange-600 text-white' :
+                                pha.threatLevel.rating === 'medium' ? 'bg-yellow-600 text-white' :
+                                'bg-green-600 text-white'
+                              }`}
+                            >
+                              {pha.threatLevel.rating}
+                            </Badge>
+                          </div>
+                          <div className="mt-2 text-xs text-muted-foreground">
+                            <p>📏 {pha.sizeComparison} • 📅 {pha.orbit.orbitalPeriod.value.toFixed(1)}y orbit</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {dangerousPHAError && (
+                  <Card className="bg-red-50/50 border-red-200 mt-3">
+                    <CardContent className="p-2">
+                      <p className="font-medium text-sm text-red-700">Failed to load dangerous PHAs</p>
+                      <p className="text-xs text-red-600">{dangerousPHAError}</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Enhanced NASA Asteroids Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-medium">🌌 Real Asteroids from NASA</Label>
+              <Badge variant="outline">{nasaAsteroids.length} Available</Badge>
+            </div>
+
             <div className="space-y-2">
               <div className="grid grid-cols-2 gap-2">
                 <Button
@@ -336,50 +440,89 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
                   Recent NEOs
                 </Button>
               </div>
+
               {isLoadingNASA && (
-                <p className="text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="animate-spin w-3 h-3 border border-primary border-t-transparent rounded-full"></div>
                   Fetching real asteroid data from NASA...
-                </p>
-              )}
-              {nasaError && (
-                <div className="p-2 bg-destructive/10 border border-destructive/20 rounded text-xs">
-                  <p className="font-medium">Failed to load NASA data</p>
-                  <p>{nasaError}</p>
                 </div>
               )}
-              {nasaAsteroids.length > 0 && (
-                <Select
-                  value={selectedNASAId || ""}
-                  onValueChange={selectNASAsteroid}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select an asteroid" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {nasaAsteroids.map((asteroid) => (
-                      <SelectItem key={asteroid.id} value={asteroid.id}>
-                        <div className="flex items-center gap-2">
-                          <span className="truncate">{asteroid.name}</span>
-                          <Badge
-                            variant={
-                              asteroid.isPotentiallyHazardous
-                                ? "destructive"
-                                : "secondary"
-                            }
-                            className="text-xs"
-                          >
-                            {asteroid.isPotentiallyHazardous ? "PHA" : "Safe"}
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+              {nasaError && (
+                <Card className="bg-destructive/10 border-destructive/20">
+                  <CardContent className="p-3">
+                    <p className="font-medium text-sm">Failed to load NASA data</p>
+                    <p className="text-xs text-muted-foreground">{nasaError}</p>
+                  </CardContent>
+                </Card>
               )}
+
+              {nasaAsteroids.length > 0 && (
+                <div className="space-y-2">
+                  <Select
+                    value={selectedNASAId || ""}
+                    onValueChange={selectNASAsteroid}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a real asteroid..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {nasaAsteroids.map((asteroid) => (
+                        <SelectItem key={asteroid.id} value={asteroid.id}>
+                          <div className="flex items-center gap-2 w-full">
+                            <span className="truncate flex-1">{asteroid.name}</span>
+                            <Badge
+                              variant={
+                                asteroid.threatLevel.rating === 'safe' ? "secondary" :
+                                asteroid.threatLevel.rating === 'low' ? "outline" :
+                                asteroid.threatLevel.rating === 'medium' ? "default" : "destructive"
+                              }
+                              className="text-xs shrink-0"
+                            >
+                              {asteroid.threatLevel.rating}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Selected asteroid preview */}
+                  {(() => {
+                    const selectedAsteroid = nasaAsteroids.find(a => a.id === selectedNASAId);
+                    return selectedAsteroid ? (
+                      <Card className="bg-muted/50">
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">{selectedAsteroid.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {selectedAsteroid.threatLevel.description}
+                              </p>
+                              <div className="flex items-center gap-3 mt-1">
+                                <span className="text-xs">📏 {selectedAsteroid.sizeComparison}</span>
+                                <span className="text-xs">📅 {selectedAsteroid.orbit.orbitalPeriod.value.toFixed(1)} year orbit</span>
+                              </div>
+                            </div>
+                            <Button variant="outline" size="sm" className="ml-2">
+                              View Details
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ) : null;
+                  })()}
+                </div>
+              )}
+
               {nasaAsteroids.length === 0 && !isLoadingNASA && !nasaError && (
-                <p className="text-xs text-muted-foreground">
-                  Click "Famous" for well-known asteroids or "Recent NEOs" for asteroids with upcoming close approaches
-                </p>
+                <Card className="bg-muted/30">
+                  <CardContent className="p-3">
+                    <p className="text-xs text-muted-foreground text-center">
+                      Click "Famous" for well-known asteroids or "Recent NEOs" for asteroids with upcoming close approaches
+                    </p>
+                  </CardContent>
+                </Card>
               )}
             </div>
           </div>

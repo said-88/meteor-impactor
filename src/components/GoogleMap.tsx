@@ -338,7 +338,7 @@ export function GoogleMap() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#3b82f6]"></div>
+              <div className="w-3 h-3 rounded-full bg-[#1e40af]"></div>
               <span>
                 Overpressure (
                 {impactResults.effects.airblast.overpressureRadius.toFixed(2)}{" "}
@@ -346,7 +346,7 @@ export function GoogleMap() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#60a5fa]"></div>
+              <div className="w-3 h-3 rounded-full bg-[#1d4ed8]"></div>
               <span>
                 Shockwave (
                 {impactResults.effects.airblast.shockwaveRadius.toFixed(2)} km)

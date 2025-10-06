@@ -43,6 +43,19 @@ export async function GET(request: NextRequest) {
         url = `${NASA_API_BASE}/neo/browse?page=${page}&size=${size}&api_key=${API_KEY}`;
         break;
 
+      case 'sentry':  // NASA's Sentry Risk Table - Most Dangerous Asteroids
+        url = `https://ssd-api.jpl.nasa.gov/sentry.api`;
+        break;
+
+      case 'cad':  // Close Approach Data - Recent dangerous approaches
+        const cadDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
+        url = `https://ssd-api.jpl.nasa.gov/cad.api?date=${cadDate}`;
+        break;
+
+      case 'pha':  // Potentially Hazardous Asteroids database
+        url = `https://ssd-api.jpl.nasa.gov/pha.api`;
+        break;
+
       default:
         console.error(`❌ Invalid endpoint: ${endpoint}`);
         return NextResponse.json({ error: 'Invalid endpoint' }, { status: 400 });

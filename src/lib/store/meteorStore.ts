@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { ImpactCalculator } from "@/lib/physics/impactCalculator";
 import { NASAAPIService } from "@/lib/nasa-api";
+import { DangerousPHAService } from "@/lib/nasa/dangerous-pha-service";
 import type {
   ImpactLocation,
   ImpactResults,
@@ -44,6 +45,20 @@ interface MeteorState {
   isLoadingNASA: boolean;
   nasaError: string | null;
 
+  // Dangerous PHA data
+  dangerousPHAs: NASA_Asteroid[];
+  selectedDangerousPHAId: string | null;
+  isLoadingDangerous: boolean;
+  dangerousPHAError: string | null;
+
+  // PHA Impact analyses (calculated for each dangerous PHA)
+  phaImpactAnalyses: Map<string, ImpactResults>;
+
+  // Individual PHA calculation states
+  calculatingPHAnalyses: Set<string>;
+  phaCalculationProgress: Map<string, number>;
+  phaCalculationErrors: Map<string, string>;
+
   // Actions
   setParameters: (parameters: MeteorParameters) => void;
   updateParameter: <K extends keyof MeteorParameters>(
@@ -65,6 +80,16 @@ interface MeteorState {
   load2025CloseApproaches: () => Promise<void>;
   selectNASAsteroid: (asteroidId: string) => void;
   setIsLoadingNASA: (loading: boolean) => void;
+
+  // Dangerous PHA actions
+  loadDangerousPHAs: () => Promise<void>;
+  selectDangerousPHA: (phaId: string) => void;
+  setIsLoadingDangerous: (loading: boolean) => void;
+  calculatePHAImpactAnalysis: (phaId: string) => void;
+  getPHAImpactAnalysis: (phaId: string) => ImpactResults | null;
+  calculateIndividualPHAImpact: (phaId: string) => Promise<void>;
+  getPHAnalysisStatus: (phaId: string) => 'idle' | 'calculating' | 'completed' | 'error';
+  clearPHAnalysis: (phaId: string) => void;
 
   // Utility actions
   randomizeParameters: () => void;
@@ -99,6 +124,14 @@ export const useMeteorStore = create<MeteorState>()(
       selectedNASAId: null,
       isLoadingNASA: false,
       nasaError: null,
+      dangerousPHAs: [],
+      selectedDangerousPHAId: null,
+      isLoadingDangerous: false,
+      dangerousPHAError: null,
+      phaImpactAnalyses: new Map<string, ImpactResults>(),
+      calculatingPHAnalyses: new Set<string>(),
+      phaCalculationProgress: new Map<string, number>(),
+      phaCalculationErrors: new Map<string, string>(),
 
       // Actions
       setParameters: (parameters: MeteorParameters) => {
@@ -233,6 +266,223 @@ export const useMeteorStore = create<MeteorState>()(
 
       setIsLoadingNASA: (loading: boolean) => {
         set({ isLoadingNASA: loading });
+      },
+
+      // Dangerous PHA actions
+      loadDangerousPHAs: async () => {
+        set({ isLoadingDangerous: true, dangerousPHAError: null });
+        try {
+          const dangerousAsteroids = await DangerousPHAService.getMostDangerous();
+          set({ dangerousPHAs: dangerousAsteroids, isLoadingDangerous: false });
+        } catch (error) {
+          console.error("Failed to load dangerous PHAs:", error);
+          const errorMessage = error instanceof Error ? error.message : "Failed to load dangerous PHA data";
+          set({ isLoadingDangerous: false, dangerousPHAError: errorMessage });
+        }
+      },
+
+      selectDangerousPHA: (phaId: string) => {
+        const { dangerousPHAs } = get();
+        const pha = dangerousPHAs.find((a) => a.id === phaId);
+
+        if (pha) {
+          // Convert dangerous PHA data to meteor parameters
+          const diameter = (pha.estimatedDiameter.min + pha.estimatedDiameter.max) / 2;
+          const velocity = pha.closeApproachData.velocity;
+          const angle = 45; // Default impact angle
+          const composition = "rocky" as const;
+          const density = ImpactCalculator.getDensityForComposition(composition);
+
+          const parameters: MeteorParameters = {
+            diameter,
+            velocity,
+            angle,
+            density,
+            composition,
+          };
+
+          get().setParameters(parameters);
+          set({ selectedDangerousPHAId: phaId });
+        }
+      },
+
+      setIsLoadingDangerous: (loading: boolean) => {
+        set({ isLoadingDangerous: loading });
+      },
+
+      calculatePHAImpactAnalysis: (phaId: string) => {
+        const { dangerousPHAs } = get();
+        const pha = dangerousPHAs.find((a) => a.id === phaId);
+
+        if (pha) {
+          // Convert PHA data to meteor parameters for calculation
+          const diameter = (pha.estimatedDiameter.min + pha.estimatedDiameter.max) / 2;
+          const velocity = pha.closeApproachData.velocity;
+          const angle = 45; // Default impact angle
+          const composition = "rocky" as const;
+          const density = ImpactCalculator.getDensityForComposition(composition);
+
+          const parameters: MeteorParameters = {
+            diameter,
+            velocity,
+            angle,
+            density,
+            composition,
+          };
+
+          // Calculate impact results
+          const impactResults = ImpactCalculator.calculateImpact(parameters, 100);
+
+          // Store the analysis
+          set((state) => {
+            const newAnalyses = new Map(state.phaImpactAnalyses);
+            newAnalyses.set(phaId, impactResults);
+            return { phaImpactAnalyses: newAnalyses };
+          });
+
+          console.log(`📊 Calculated impact analysis for PHA ${pha.name}:`, impactResults);
+        }
+      },
+
+      getPHAImpactAnalysis: (phaId: string) => {
+        const { phaImpactAnalyses } = get();
+        return phaImpactAnalyses.get(phaId) || null;
+      },
+
+      calculateIndividualPHAImpact: async (phaId: string) => {
+        const { dangerousPHAs } = get();
+        const pha = dangerousPHAs.find((a) => a.id === phaId);
+
+        if (!pha) {
+          console.warn(`⚠️ PHA ${phaId} not found`);
+          return;
+        }
+
+        // Set calculating state
+        set((state) => ({
+          calculatingPHAnalyses: new Set([...state.calculatingPHAnalyses, phaId]),
+          phaCalculationProgress: new Map([...state.phaCalculationProgress, [phaId, 0]]),
+          phaCalculationErrors: new Map([...state.phaCalculationErrors].filter(([id]) => id !== phaId)),
+        }));
+
+        try {
+          // Simulate progressive calculation with steps
+          const calculationSteps = [
+            { name: 'Converting PHA data', duration: 200 },
+            { name: 'Calculating kinetic energy', duration: 300 },
+            { name: 'Modeling crater formation', duration: 400 },
+            { name: 'Simulating blast effects', duration: 350 },
+            { name: 'Assessing casualties', duration: 250 },
+            { name: 'Finalizing analysis', duration: 150 },
+          ];
+
+          for (let i = 0; i < calculationSteps.length; i++) {
+            const step = calculationSteps[i];
+            const progressIncrement = 100 / calculationSteps.length;
+
+            // Update progress
+            set((state) => {
+              const newProgress = new Map(state.phaCalculationProgress);
+              newProgress.set(phaId, (i + 1) * progressIncrement);
+              return { phaCalculationProgress: newProgress };
+            });
+
+            // Simulate calculation time
+            await new Promise(resolve => setTimeout(resolve, step.duration));
+
+            // Check if calculation was cancelled
+            const { calculatingPHAnalyses } = get();
+            if (!calculatingPHAnalyses.has(phaId)) {
+              console.log(`🛑 Calculation cancelled for PHA ${pha.name}`);
+              return;
+            }
+          }
+
+          // Final calculation with PHA-specific parameters
+          const diameter = (pha.estimatedDiameter.min + pha.estimatedDiameter.max) / 2;
+          const velocity = pha.closeApproachData.velocity;
+          const angle = 45;
+          const composition = "rocky" as const;
+          const density = ImpactCalculator.getDensityForComposition(composition);
+
+          const parameters: MeteorParameters = {
+            diameter,
+            velocity,
+            angle,
+            density,
+            composition,
+          };
+
+          const impactResults = ImpactCalculator.calculateImpact(parameters, 100);
+
+          // Store the completed analysis
+          set((state) => {
+            const newAnalyses = new Map(state.phaImpactAnalyses);
+            newAnalyses.set(phaId, impactResults);
+
+            // Remove from calculating set
+            const newCalculating = new Set(state.calculatingPHAnalyses);
+            newCalculating.delete(phaId);
+
+            return {
+              phaImpactAnalyses: newAnalyses,
+              calculatingPHAnalyses: newCalculating,
+              phaCalculationProgress: new Map([...state.phaCalculationProgress].filter(([id]) => id !== phaId)),
+            };
+          });
+
+          console.log(`✅ Completed impact analysis for PHA ${pha.name}:`, impactResults);
+
+        } catch (error) {
+          console.error(`❌ Failed to calculate impact for PHA ${pha.name}:`, error);
+
+          // Set error state
+          set((state) => {
+            const newErrors = new Map(state.phaCalculationErrors);
+            newErrors.set(phaId, error instanceof Error ? error.message : 'Calculation failed');
+
+            const newCalculating = new Set(state.calculatingPHAnalyses);
+            newCalculating.delete(phaId);
+
+            return {
+              phaCalculationErrors: newErrors,
+              calculatingPHAnalyses: newCalculating,
+              phaCalculationProgress: new Map([...state.phaCalculationProgress].filter(([id]) => id !== phaId)),
+            };
+          });
+        }
+      },
+
+      getPHAnalysisStatus: (phaId: string) => {
+        const { calculatingPHAnalyses, phaImpactAnalyses, phaCalculationErrors } = get();
+
+        if (calculatingPHAnalyses.has(phaId)) return 'calculating';
+        if (phaCalculationErrors.has(phaId)) return 'error';
+        if (phaImpactAnalyses.has(phaId)) return 'completed';
+        return 'idle';
+      },
+
+      clearPHAnalysis: (phaId: string) => {
+        set((state) => {
+          const newAnalyses = new Map(state.phaImpactAnalyses);
+          newAnalyses.delete(phaId);
+
+          const newCalculating = new Set(state.calculatingPHAnalyses);
+          newCalculating.delete(phaId);
+
+          const newProgress = new Map(state.phaCalculationProgress);
+          newProgress.delete(phaId);
+
+          const newErrors = new Map(state.phaCalculationErrors);
+          newErrors.delete(phaId);
+
+          return {
+            phaImpactAnalyses: newAnalyses,
+            calculatingPHAnalyses: newCalculating,
+            phaCalculationProgress: newProgress,
+            phaCalculationErrors: newErrors,
+          };
+        });
       },
 
       calculateImpact: () => {
