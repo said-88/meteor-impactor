@@ -3,15 +3,15 @@
 import { ControlPanel } from "@/components/ControlPanel";
 import { GoogleMap } from "@/components/GoogleMap";
 import { ResultsPanel } from "@/components/ResultsPanel";
+import { ShareButtons } from "@/components/ShareButtons";
 import { useMeteorStore } from "@/lib/store/meteorStore";
-import { Settings, Menu, Activity } from "lucide-react";
+import { Menu, Activity } from "lucide-react";
 import { useState } from "react";
 
 export default function Home() {
   // Use Zustand store for global state management
   const { showResults, impactResults, toggleResultsPanel, isAnimating } = useMeteorStore();
   const [showControls, setShowControls] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -43,14 +43,8 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Settings Toggle - Top Right Corner */}
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className="fixed top-4 right-4 z-50 p-3 rounded-lg shadow-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 hover:text-white transition-all duration-200"
-                title="Settings"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
+              {/* Share Buttons - Top Right Corner */}
+              <ShareButtons />
             </div>
           </div>
         </div>
