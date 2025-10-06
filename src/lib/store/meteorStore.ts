@@ -3,6 +3,7 @@ import { devtools } from "zustand/middleware";
 import { ImpactCalculator } from "@/lib/physics/impactCalculator";
 import { NASAAPIService } from "@/lib/nasa-api";
 import { DangerousPHAService } from "@/lib/nasa/dangerous-pha-service";
+import { PHAAnalyst } from "@/lib/ai/pha-analyst";
 import type {
   ImpactLocation,
   ImpactResults,
@@ -60,6 +61,19 @@ interface MeteorState {
   phaCalculationProgress: Map<string, number>;
   phaCalculationErrors: Map<string, string>;
 
+  // AI Analysis state
+  phaAIAnalyses: Map<string, {
+    summary: string;
+    riskAssessment: string;
+    humanImpact: string;
+    mitigationStrategies: string;
+    technicalBreakdown: string;
+    keyInsights: string[];
+  }>;
+  calculatingAIAnalyses: Set<string>;
+  aiAnalysisProgress: Map<string, number>;
+  aiAnalysisErrors: Map<string, string>;
+
   // Actions
   setParameters: (parameters: MeteorParameters) => void;
   updateParameter: <K extends keyof MeteorParameters>(
@@ -91,6 +105,22 @@ interface MeteorState {
   calculateIndividualPHAImpact: (phaId: string) => Promise<void>;
   getPHAnalysisStatus: (phaId: string) => 'idle' | 'calculating' | 'completed' | 'error';
   clearPHAnalysis: (phaId: string) => void;
+
+  // AI Analysis actions
+  generatePHAIAnalysis: (phaId: string) => Promise<void>;
+  getPHAIAnalysis: (phaId: string) => {
+    summary: string;
+    riskAssessment: string;
+    humanImpact: string;
+    mitigationStrategies: string;
+    technicalBreakdown: string;
+    keyInsights: string[];
+  } | null;
+  getAIAnalysisStatus: (phaId: string) => 'idle' | 'calculating' | 'completed' | 'error';
+  clearAIAnalysis: (phaId: string) => void;
+  generateComparativeAIAnalysis: (phaIds: string[]) => Promise<void>;
+  generateMitigationStrategies: (phaId: string, leadTime?: number) => Promise<void>;
+  generateScenarioAnalysis: (phaId: string) => Promise<void>;
 
   // Utility actions
   randomizeParameters: () => void;
@@ -134,6 +164,17 @@ export const useMeteorStore = create<MeteorState>()(
       calculatingPHAnalyses: new Set<string>(),
       phaCalculationProgress: new Map<string, number>(),
       phaCalculationErrors: new Map<string, string>(),
+      phaAIAnalyses: new Map<string, {
+        summary: string;
+        riskAssessment: string;
+        humanImpact: string;
+        mitigationStrategies: string;
+        technicalBreakdown: string;
+        keyInsights: string[];
+      }>(),
+      calculatingAIAnalyses: new Set<string>(),
+      aiAnalysisProgress: new Map<string, number>(),
+      aiAnalysisErrors: new Map<string, string>(),
 
       // Actions
       setParameters: (parameters: MeteorParameters) => {
@@ -325,10 +366,12 @@ export const useMeteorStore = create<MeteorState>()(
       },
 
       calculatePHAImpactAnalysis: (phaId: string) => {
-        const { dangerousPHAs } = get();
+        const { dangerousPHAs, phaImpactAnalyses } = get();
         const pha = dangerousPHAs.find((a) => a.id === phaId);
 
         if (pha) {
+          console.log(`🔍 Calculating impact analysis for PHA ${pha.name} (ID: ${phaId})`);
+
           // Convert PHA data to meteor parameters for calculation
           const diameter = (pha.estimatedDiameter.min + pha.estimatedDiameter.max) / 2;
           const velocity = pha.closeApproachData.velocity;
@@ -344,17 +387,26 @@ export const useMeteorStore = create<MeteorState>()(
             composition,
           };
 
+          console.log(`📏 PHA Parameters:`, parameters);
+
           // Calculate impact results
           const impactResults = ImpactCalculator.calculateImpact(parameters, 100);
 
-          // Store the analysis
+          console.log(`📊 Impact Results:`, impactResults);
+
+          // Store the analysis immediately
           set((state) => {
             const newAnalyses = new Map(state.phaImpactAnalyses);
             newAnalyses.set(phaId, impactResults);
+            console.log(`💾 Stored impact analysis for PHA ${pha.name}`);
+            console.log(`📋 Current analyses in store:`, Array.from(newAnalyses.keys()));
             return { phaImpactAnalyses: newAnalyses };
           });
 
-          console.log(`📊 Calculated impact analysis for PHA ${pha.name}:`, impactResults);
+          console.log(`✅ Successfully calculated impact analysis for PHA ${pha.name}`);
+        } else {
+          console.error(`❌ PHA with ID ${phaId} not found in dangerousPHAs array`);
+          console.error(`📋 Available PHAs:`, dangerousPHAs.map(pha => ({ id: pha.id, name: pha.name })));
         }
       },
 
@@ -497,6 +549,320 @@ export const useMeteorStore = create<MeteorState>()(
             phaCalculationErrors: newErrors,
           };
         });
+      },
+
+      // AI Analysis actions
+      generatePHAIAnalysis: async (phaId: string) => {
+        const { dangerousPHAs } = get();
+        const pha = dangerousPHAs.find((a) => a.id === phaId);
+
+        if (!pha) {
+          console.warn(`⚠️ PHA ${phaId} not found for AI analysis`);
+          return;
+        }
+
+        // Check if we have impact analysis first
+        let impactResults = get().phaImpactAnalyses.get(phaId);
+
+        if (!impactResults) {
+          console.log(`📊 No impact analysis available for PHA ${pha.name}, calculating first...`);
+          
+          // Calculate impact analysis first and wait for it to complete
+          try {
+            await get().calculatePHAImpactAnalysis(phaId);
+            
+            // Wait a bit for state to update
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // Get the results from the updated state
+            impactResults = get().phaImpactAnalyses.get(phaId);
+            
+            if (impactResults) {
+              console.log(`✅ Impact analysis completed successfully for ${pha.name}`);
+            } else {
+              console.error(`❌ Impact analysis failed to generate results for ${pha.name}`);
+              
+              // Set error state
+              set((state) => ({
+                aiAnalysisErrors: new Map([...state.aiAnalysisErrors, [phaId, 'Failed to calculate impact analysis']]),
+              }));
+              return;
+            }
+          } catch (error) {
+            console.error(`❌ Error calculating impact analysis for ${pha.name}:`, error);
+            set((state) => ({
+              aiAnalysisErrors: new Map([...state.aiAnalysisErrors, [phaId, 'Impact calculation error']]),
+            }));
+            return;
+          }
+        }
+
+        if (!impactResults) {
+          console.error(`❌ No impact results available after calculation for ${pha.name}`);
+          return;
+        }
+
+        // Set AI calculating state
+        set((state) => ({
+          calculatingAIAnalyses: new Set([...state.calculatingAIAnalyses, phaId]),
+          aiAnalysisProgress: new Map([...state.aiAnalysisProgress, [phaId, 0]]),
+          aiAnalysisErrors: new Map([...state.aiAnalysisErrors].filter(([id]) => id !== phaId)),
+        }));
+
+        try {
+          // Simulate progressive AI analysis with steps
+          const analysisSteps = [
+            { name: 'Analyzing asteroid data', duration: 300 },
+            { name: 'Processing impact calculations', duration: 400 },
+            { name: 'Generating risk assessment', duration: 500 },
+            { name: 'Creating mitigation strategies', duration: 350 },
+            { name: 'Compiling final report', duration: 250 },
+          ];
+
+          for (let i = 0; i < analysisSteps.length; i++) {
+            const step = analysisSteps[i];
+            const progressIncrement = 100 / analysisSteps.length;
+
+            // Update progress
+            set((state) => {
+              const newProgress = new Map(state.aiAnalysisProgress);
+              newProgress.set(phaId, (i + 1) * progressIncrement);
+              return { aiAnalysisProgress: newProgress };
+            });
+
+            // Simulate AI processing time
+            await new Promise(resolve => setTimeout(resolve, step.duration));
+
+            // Check if analysis was cancelled
+            const { calculatingAIAnalyses } = get();
+            if (!calculatingAIAnalyses.has(phaId)) {
+              console.log(`🛑 AI analysis cancelled for PHA ${pha.name}`);
+              return;
+            }
+          }
+
+          // Convert PHA data to meteor parameters for AI analysis
+          const diameter = (pha.estimatedDiameter.min + pha.estimatedDiameter.max) / 2;
+          const velocity = pha.closeApproachData.velocity;
+          const angle = 45;
+          const composition = "rocky" as const;
+          const density = ImpactCalculator.getDensityForComposition(composition);
+
+          const parameters: MeteorParameters = {
+            diameter,
+            velocity,
+            angle,
+            density,
+            composition,
+          };
+
+          // Generate AI analysis
+          const aiAnalysis = await PHAAnalyst.generateImpactAnalysis(
+            pha,
+            impactResults,
+            parameters,
+            {
+              location: 'Global impact assessment',
+              populationDensity: 100,
+              historicalComparison: true,
+            }
+          );
+
+          // Store the completed AI analysis
+          set((state) => {
+            const newAIAnalyses = new Map(state.phaAIAnalyses);
+            newAIAnalyses.set(phaId, aiAnalysis);
+
+            // Remove from calculating set
+            const newCalculating = new Set(state.calculatingAIAnalyses);
+            newCalculating.delete(phaId);
+
+            return {
+              phaAIAnalyses: newAIAnalyses,
+              calculatingAIAnalyses: newCalculating,
+              aiAnalysisProgress: new Map([...state.aiAnalysisProgress].filter(([id]) => id !== phaId)),
+            };
+          });
+
+          console.log(`🤖 Completed AI analysis for PHA ${pha.name}:`, aiAnalysis);
+
+        } catch (error) {
+          console.error(`❌ Failed to generate AI analysis for PHA ${pha.name}:`, error);
+
+          // Set error state
+          set((state) => {
+            const newErrors = new Map(state.aiAnalysisErrors);
+            newErrors.set(phaId, error instanceof Error ? error.message : 'AI analysis failed');
+
+            const newCalculating = new Set(state.calculatingAIAnalyses);
+            newCalculating.delete(phaId);
+
+            return {
+              aiAnalysisErrors: newErrors,
+              calculatingAIAnalyses: newCalculating,
+              aiAnalysisProgress: new Map([...state.aiAnalysisProgress].filter(([id]) => id !== phaId)),
+            };
+          });
+        }
+      },
+
+      getPHAIAnalysis: (phaId: string) => {
+        const { phaAIAnalyses } = get();
+        return phaAIAnalyses.get(phaId) || null;
+      },
+
+      getAIAnalysisStatus: (phaId: string) => {
+        const { calculatingAIAnalyses, phaAIAnalyses, aiAnalysisErrors } = get();
+
+        if (calculatingAIAnalyses.has(phaId)) return 'calculating';
+        if (aiAnalysisErrors.has(phaId)) return 'error';
+        if (phaAIAnalyses.has(phaId)) return 'completed';
+        return 'idle';
+      },
+
+      clearAIAnalysis: (phaId: string) => {
+        set((state) => {
+          const newAIAnalyses = new Map(state.phaAIAnalyses);
+          newAIAnalyses.delete(phaId);
+
+          const newCalculating = new Set(state.calculatingAIAnalyses);
+          newCalculating.delete(phaId);
+
+          const newProgress = new Map(state.aiAnalysisProgress);
+          newProgress.delete(phaId);
+
+          const newErrors = new Map(state.aiAnalysisErrors);
+          newErrors.delete(phaId);
+
+          return {
+            phaAIAnalyses: newAIAnalyses,
+            calculatingAIAnalyses: newCalculating,
+            aiAnalysisProgress: newProgress,
+            aiAnalysisErrors: newErrors,
+          };
+        });
+      },
+
+      generateComparativeAIAnalysis: async (phaIds: string[]) => {
+        const { dangerousPHAs, phaImpactAnalyses } = get();
+
+        // Filter to only PHAs that have impact analyses
+        const validPhas = phaIds
+          .map(id => {
+            const pha = dangerousPHAs.find(a => a.id === id);
+            const impactResults = phaImpactAnalyses.get(id);
+            if (pha && impactResults) {
+              const diameter = (pha.estimatedDiameter.min + pha.estimatedDiameter.max) / 2;
+              const velocity = pha.closeApproachData.velocity;
+              const angle = 45;
+              const composition = "rocky" as const;
+              const density = ImpactCalculator.getDensityForComposition(composition);
+
+              const parameters: MeteorParameters = {
+                diameter,
+                velocity,
+                angle,
+                density,
+                composition,
+              };
+
+              return { pha, impactResults, parameters };
+            }
+            return null;
+          })
+          .filter((item): item is { pha: NASA_Asteroid; impactResults: ImpactResults; parameters: MeteorParameters } => item !== null);
+
+        if (validPhas.length < 2) {
+          console.warn('⚠️ Need at least 2 PHAs with impact analyses for comparative analysis');
+          return;
+        }
+
+        try {
+          console.log(`🔍 Generating comparative AI analysis for ${validPhas.length} PHAs...`);
+          const comparativeAnalysis = await PHAAnalyst.generateComparativeAnalysis(validPhas);
+
+          // Store comparative analysis (could be stored separately or with first PHA)
+          console.log('📊 Comparative analysis completed:', comparativeAnalysis);
+
+        } catch (error) {
+          console.error('❌ Failed to generate comparative analysis:', error);
+        }
+      },
+
+      generateMitigationStrategies: async (phaId: string, leadTime = 10) => {
+        const { dangerousPHAs, phaImpactAnalyses } = get();
+        const pha = dangerousPHAs.find((a) => a.id === phaId);
+
+        if (!pha) {
+          console.warn(`⚠️ PHA ${phaId} not found for mitigation analysis`);
+          return;
+        }
+
+        const impactResults = phaImpactAnalyses.get(phaId);
+        if (!impactResults) {
+          console.warn(`⚠️ No impact analysis available for mitigation strategies`);
+          return;
+        }
+
+        try {
+          console.log(`🛡️ Generating mitigation strategies for PHA ${pha.name} (${leadTime} years lead time)...`);
+          const mitigationStrategies = await PHAAnalyst.generateMitigationStrategies(
+            pha,
+            impactResults,
+            leadTime
+          );
+
+          console.log('✅ Mitigation strategies generated:', mitigationStrategies);
+
+        } catch (error) {
+          console.error('❌ Failed to generate mitigation strategies:', error);
+        }
+      },
+
+      generateScenarioAnalysis: async (phaId: string) => {
+        const { dangerousPHAs, phaImpactAnalyses } = get();
+        const pha = dangerousPHAs.find((a) => a.id === phaId);
+
+        if (!pha) {
+          console.warn(`⚠️ PHA ${phaId} not found for scenario analysis`);
+          return;
+        }
+
+        const impactResults = phaImpactAnalyses.get(phaId);
+        if (!impactResults) {
+          console.warn(`⚠️ No impact analysis available for scenario analysis`);
+          return;
+        }
+
+        try {
+          console.log(`🔮 Generating scenario analysis for PHA ${pha.name}...`);
+
+          // Convert PHA data to meteor parameters
+          const diameter = (pha.estimatedDiameter.min + pha.estimatedDiameter.max) / 2;
+          const velocity = pha.closeApproachData.velocity;
+          const angle = 45;
+          const composition = "rocky" as const;
+          const density = ImpactCalculator.getDensityForComposition(composition);
+
+          const parameters: MeteorParameters = {
+            diameter,
+            velocity,
+            angle,
+            density,
+            composition,
+          };
+
+          const scenarioAnalysis = await PHAAnalyst.generateScenarioAnalysis(
+            pha,
+            impactResults,
+            parameters
+          );
+
+          console.log('✅ Scenario analysis completed:', scenarioAnalysis);
+
+        } catch (error) {
+          console.error('❌ Failed to generate scenario analysis:', error);
+        }
       },
 
       calculateImpact: () => {

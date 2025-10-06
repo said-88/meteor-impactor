@@ -3,15 +3,17 @@
 import { ControlPanel } from "@/components/ControlPanel";
 import { GoogleMap } from "@/components/GoogleMap";
 import { ResultsPanel } from "@/components/ResultsPanel";
+import { AIAnalysisPanel } from "@/components/AIAnalysisPanel";
 import { useMeteorStore } from "@/lib/store/meteorStore";
-import { Settings, Menu, Activity } from "lucide-react";
+import { Settings, Menu, Activity, Brain, Maximize2 } from "lucide-react";
 import { useState } from "react";
 
 export default function Home() {
   // Use Zustand store for global state management
-  const { showResults, impactResults, toggleResultsPanel, isAnimating, isLocked } = useMeteorStore();
+  const { showResults, impactResults, toggleResultsPanel, isAnimating, isLocked, selectedDangerousPHAId } = useMeteorStore();
   const [showControls, setShowControls] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -77,6 +79,46 @@ export default function Home() {
           </div>
         </div>
 
+        {/* AI Analysis Panel Overlay - Bottom Right */}
+        {selectedDangerousPHAId && !showAIModal && (
+          <button
+            onClick={() => setShowAIModal(true)}
+            className="absolute right-4 bottom-4 z-30 control-button p-4 rounded-lg shadow-lg bg-gradient-to-br from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 transition-all duration-200 group"
+            title="Open AI Impact Analysis"
+          >
+            <div className="flex items-center gap-2">
+              <Brain className="w-6 h-6 text-white" />
+              <Maximize2 className="w-4 h-4 text-white/70 group-hover:text-white transition-colors" />
+            </div>
+            <span className="absolute -top-2 -right-2 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+            </span>
+          </button>
+        )}
+
+        {/* AI Analysis Modal - Centered */}
+        {selectedDangerousPHAId && showAIModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+              onClick={() => setShowAIModal(false)}
+            />
+
+            {/* Modal Content */}
+            <div
+              className="relative z-50 w-full max-w-6xl max-h-[90vh] bg-slate-900/95 border border-white/10 rounded-xl shadow-2xl animate-in zoom-in-95 fade-in duration-300 flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <AIAnalysisPanel
+                phaId={selectedDangerousPHAId}
+                onClose={() => setShowAIModal(false)}
+              />
+            </div>
+          </div>
+        )}
+
 
 
         {/* Control Panel Toggle (when hidden) */}
@@ -100,6 +142,9 @@ export default function Home() {
             <Activity className="w-5 h-5" />
           </button>
         )}
+
+        {/* AI Analysis Toggle (when PHA is selected) */}
+        {/* Removed - now using floating button above */}
 
         {/* Mobile Overlay Backdrop */}
         {(showControls || (showResults && impactResults)) && (

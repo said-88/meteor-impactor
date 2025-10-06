@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, RotateCcw, Zap, Activity, Rocket, Trash2 } from "lucide-react";
+import { Info, RotateCcw, Zap, Activity, Rocket, Trash2, Brain } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -45,6 +45,10 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
     isAnimating,
     isLaunching,
     isLocked,
+    getPHAIAnalysis,
+    getAIAnalysisStatus,
+    generatePHAIAnalysis,
+    phaImpactAnalyses,
   } = useMeteorStore();
 
   function getInfoText(key: string): React.ReactNode {
@@ -363,7 +367,7 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
                   {isLoadingDangerous ? (
                     <>
                       <div className="animate-spin w-3 h-3 border border-primary border-t-transparent rounded-full mr-2"></div>
-                      <span className="text-primary">Loading...</span>
+                      <span className="text-primary">Fetching Data...</span>
                     </>
                   ) : (
                     <>
@@ -413,8 +417,40 @@ export function ControlPanel({ onClose }: ControlPanelProps) {
                               {pha.threatLevel.rating}
                             </Badge>
                           </div>
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            <p>📏 {pha.sizeComparison} • 📅 {pha.orbit.orbitalPeriod.value.toFixed(1)}y orbit</p>
+                          <div className="mt-2 flex items-center justify-between">
+                            <p className="text-xs text-muted-foreground">
+                              📏 {pha.sizeComparison} • 📅 {pha.orbit.orbitalPeriod.value.toFixed(1)}y orbit
+                            </p>
+                            <div className="flex gap-1">
+                              {/* AI Analysis Button */}
+                              {(() => {
+                                const aiStatus = getAIAnalysisStatus(pha.id);
+                                const hasImpactAnalysis = phaImpactAnalyses.has(pha.id);
+
+                                return (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={`h-6 px-2 ${aiStatus === 'completed' ? 'text-green-400' : aiStatus === 'calculating' ? 'text-blue-400' : 'text-purple-400'}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (aiStatus === 'idle' && hasImpactAnalysis) {
+                                        generatePHAIAnalysis(pha.id);
+                                      }
+                                    }}
+                                    disabled={aiStatus === 'calculating' || !hasImpactAnalysis}
+                                    title={
+                                      !hasImpactAnalysis ? 'Calculate impact analysis first' :
+                                      aiStatus === 'completed' ? 'AI analysis completed' :
+                                      aiStatus === 'calculating' ? 'AI analysis in progress' :
+                                      'Generate AI analysis'
+                                    }
+                                  >
+                                    <Brain className="w-3 h-3" />
+                                  </Button>
+                                );
+                              })()}
+                            </div>
                           </div>
                         </div>
                       ))}
